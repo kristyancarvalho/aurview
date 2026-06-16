@@ -59,8 +59,8 @@ jobs:
         run: |
           set -euo pipefail
           gh release create \
-            "$GITHUB_REF_NAME"
-            dist/*
-            --title "aurview ${GITHUB_REF_NAME}"
-            --verify-tag
+            "$GITHUB_REF_NAME" \
+            dist/* \
+            --title "aurview ${GITHUB_REF_NAME}" \
+            --verify-tag \
             --generate-notes
