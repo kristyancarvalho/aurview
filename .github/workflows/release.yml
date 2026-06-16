@@ -38,9 +38,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin main --depth=1
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "Tag ${GITHUB_REF_NAME} is not reachable from origin/main" >&2
+          git fetch origin dev --depth=1
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/dev; then
+            echo "Tag ${GITHUB_REF_NAME} is not reachable from origin/dev" >&2
             exit 1
           fi
 
@@ -106,11 +106,32 @@ jobs:
           tar -C dist -czf "dist/aurview_${VERSION}_${{ matrix.archive_suffix }}.tar.gz" "aurview_${VERSION}_${{ matrix.archive_suffix }}"
           rm -rf "$package_dir"
 
+      - name: Build source archive
+        if: matrix.goarch == 'amd64'
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          mkdir -p dist
+          git archive \
+            --format=tar.gz \
+            --prefix="aurview-${VERSION}/" \
+            -o "dist/aurview_${VERSION}_source.tar.gz" \
+            "$GITHUB_REF_NAME" \
+            README.md LICENSE CHANGELOG.md CONTRIBUTING.md go.mod go.sum cmd internal docs
+
       - name: Upload release archive
         uses: actions/upload-artifact@v4
         with:
           name: aurview-${{ matrix.archive_suffix }}
-          path: dist/*.tar.gz
+          path: dist/aurview_${{ needs.validate.outputs.version }}_${{ matrix.archive_suffix }}.tar.gz
+          if-no-files-found: error
+
+      - name: Upload source archive
+        if: matrix.goarch == 'amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurview-source
+          path: dist/aurview_${{ needs.validate.outputs.version }}_source.tar.gz
           if-no-files-found: error
 
   checksums:

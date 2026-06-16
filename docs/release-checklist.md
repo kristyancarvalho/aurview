@@ -37,8 +37,9 @@ Use this checklist before creating a release tag.
 - [ ] Confirm the release tag uses `vX.Y.Z`.
 - [ ] Create an annotated tag if that is the intended release action.
 - [ ] Push the release tag to GitHub.
-- [ ] Confirm the tag points to a commit reachable from `main`.
+- [ ] Confirm the tag points to a commit reachable from `dev`.
 - [ ] Confirm the GitHub release workflow uploads release artifacts.
+- [ ] Confirm the GitHub release workflow uploads the source tarball.
 - [ ] Confirm the GitHub release workflow uploads checksums.
 - [ ] Confirm GitHub release notes and attached artifacts are correct.
 

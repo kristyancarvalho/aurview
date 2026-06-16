@@ -21,9 +21,10 @@ This keeps staging branches and `dev` ready to merge without publishing anything
 The release workflow is intentionally narrow:
 
 - it accepts only semver tags in the form `vX.Y.Z`
-- it verifies that the tagged commit is reachable from `origin/main`
+- it verifies that the tagged commit is reachable from `origin/dev`
 - it reruns formatting, vet, tests and full build checks
 - it builds Linux release archives for `amd64` and `arm64`
+- it builds a deterministic source tarball from the tagged buildable tree
 - it generates a `SHA256SUMS` file for the uploaded artifacts
 - it publishes a GitHub Release using the repository `GH_TOKEN`
 

@@ -15,7 +15,7 @@ itself remains read-only; these steps are maintainer actions only.
 Before updating the AUR package:
 
 - confirm `CHANGELOG.md`, `README.md` and `LICENSE` are current
-- confirm `packaging/aur/PKGBUILD` uses the release tag source archive
+- confirm `packaging/aur/PKGBUILD` uses the GitHub release source tarball built from the tagged application tree
 - regenerate `packaging/aur/.SRCINFO`
 - verify the source archive and checksum
 
