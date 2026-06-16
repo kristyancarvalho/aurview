@@ -205,7 +205,9 @@ go vet ./...
 go build ./cmd/aurview
 ```
 
-Development notes live in [`/specs`](specs/).
+Contributor-facing project notes live in tracked repository documentation such as
+[`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/`](docs/). Local scratch notes,
+including Codex planning files, are intentionally not versioned.
 
 ## Project Status
 
@@ -218,7 +220,7 @@ aurview is an early MVP. The current focus is a polished read-only discovery wor
 - `v0.4.0`: Themes and documentation.
 - `v1.0.0`: Stable read-only AUR browser.
 
-More detail is tracked in [`specs/github/milestones.md`](specs/github/milestones.md).
+Release preparation lives in [`docs/release-checklist.md`](docs/release-checklist.md).
 
 ## Contributing
 
@@ -233,7 +235,7 @@ go vet ./...
 go build ./cmd/aurview
 ```
 
-See [`specs/github/contribution-workflow.md`](specs/github/contribution-workflow.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 
