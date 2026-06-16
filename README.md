@@ -1,21 +1,48 @@
 # aurview
 
-`aurview` is a lightweight, read-only terminal UI for browsing, searching, ranking and inspecting AUR packages.
+[![CI](https://img.shields.io/github/actions/workflow/status/kristyancarvalho/aurview/test.yml?branch=dev&label=ci)](https://github.com/kristyancarvalho/aurview/actions/workflows/test.yml)
+[![Go version](https://img.shields.io/github/go-mod/go-version/kristyancarvalho/aurview)](go.mod)
+[![License: MIT](https://img.shields.io/github/license/kristyancarvalho/aurview)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/kristyancarvalho/aurview?include_prereleases)](https://github.com/kristyancarvalho/aurview/releases)
+[![Issues](https://img.shields.io/github/issues/kristyancarvalho/aurview)](https://github.com/kristyancarvalho/aurview/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/kristyancarvalho/aurview)](https://github.com/kristyancarvalho/aurview/pulls)
+[![Last commit](https://img.shields.io/github/last-commit/kristyancarvalho/aurview/dev)](https://github.com/kristyancarvalho/aurview/commits/dev)
+[![Stars](https://img.shields.io/github/stars/kristyancarvalho/aurview?style=social)](https://github.com/kristyancarvalho/aurview/stargazers)
+[![Forks](https://img.shields.io/github/forks/kristyancarvalho/aurview?style=social)](https://github.com/kristyancarvalho/aurview/forks)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kristyancarvalho/aurview)](https://goreportcard.com/report/github.com/kristyancarvalho/aurview)
 
-The project never installs, downloads, clones, builds, updates or removes packages. It only queries the official AUR RPC interface, previews metadata and copies selected package names to the clipboard.
+`aurview` is a terminal package browser for Arch Linux and AUR users. It helps you search package metadata, compare results, inspect package details and copy package names without leaving your terminal.
 
-## Features
+## Read-Only By Design
 
-- Fast AUR RPC search by package name and description.
-- Debounced non-blocking search with in-memory query cache.
-- Local relevance ranking using name match, description match, votes, popularity, recency, out-of-date status and maintainer status.
-- Compact custom TUI with result list, detail panel, status line and help overlay.
-- Rich package detail preview via AUR RPC `info`.
-- In-session and persistent search history using XDG state paths.
-- Linux clipboard support through `wl-copy`, `xclip` or `xsel`.
-- Vim-style movement keys.
+aurview does **not** install packages.
 
-## Install / Build
+It also does **not** download, clone, build, update, remove or execute package scripts. It never calls `pacman`, `yay`, `paru`, `makepkg` or `git clone`.
+
+This matters because AUR package management can execute arbitrary build scripts. aurview keeps discovery separate from installation so you can inspect metadata first and decide what to do somewhere else.
+
+## What It Solves
+
+Searching AUR in a browser is useful, but terminal users often want something faster and denser. aurview gives you:
+
+- Fast AUR RPC search.
+- Local relevance ranking.
+- Compact package rows with votes, popularity, maintainer, update age and source.
+- A detail panel with dependencies, licenses, URLs and status.
+- Search history.
+- Vim-style keyboard movement.
+- Optional mouse selection and scrolling.
+- Clipboard copying for package names.
+- Configurable metadata sources.
+- Built-in themes.
+
+## Screenshot
+
+Screenshots will be added after the first tagged release.
+
+## Installation
+
+Build from source:
 
 ```sh
 git clone https://github.com/kristyancarvalho/aurview.git
@@ -24,29 +51,42 @@ make build
 ./bin/aurview
 ```
 
-You can also run without building:
+Run without building:
 
 ```sh
-make run
-go run ./cmd/aurview paru
+go run ./cmd/aurview
 ```
 
-The optional command-line argument is used as the initial search query.
+Start with an initial search:
 
-## Usage
+```sh
+go run ./cmd/aurview paru
+make run ARGS=paru
+```
 
-Type a package name or keyword in the search prompt. Results are ranked locally and shown in a compact table. Move through the list, inspect the detail panel and press `Enter` to copy the selected package name.
+## Basic Usage
 
-No package-management actions exist in this tool.
+Type a package name or keyword. aurview searches enabled read-only package metadata sources and ranks the results locally.
 
-## Keybindings
+Use the result list to select a package. The detail panel shows package metadata. Press `Enter` to copy the selected package name to your clipboard.
+
+Examples:
+
+```text
+paru
+linux kernel
+wayland screenshot
+nerd font
+```
+
+## Keyboard Shortcuts
 
 | Key | Action |
 | --- | --- |
 | `/` | Focus search |
 | `j` / `k` | Move selection down/up, or scroll detail when detail is focused |
 | `h` / `l` | Move focus between search, list and detail |
-| `gg` / `G` | Top/bottom |
+| `gg` / `G` | Jump to top/bottom |
 | `Ctrl+d` / `Ctrl+u` | Half-page down/up |
 | `Ctrl+f` / `Ctrl+b` | Page down/up |
 | `n` / `N` | Navigate search history newer/older |
@@ -55,16 +95,99 @@ No package-management actions exist in this tool.
 | `?` | Toggle help overlay |
 | `q` | Quit |
 
-## Data Source
+## Mouse Support
 
-`aurview` uses the official AUR RPC v5 interface:
+Mouse support is optional and terminal-dependent.
 
-- <https://wiki.archlinux.org/title/Aurweb_RPC_interface>
-- <https://aur.archlinux.org/rpc>
+- Click the search line to focus search.
+- Click a package row to select it.
+- Double-click a selected package row to copy the package name.
+- Use the mouse wheel over the result list to move selection.
+- Use the mouse wheel over the detail panel to scroll details.
 
-Search uses `type=search` with `by=name-desc` by default. Detail lookup uses `type=info`.
+The keyboard workflow remains the primary interface.
+
+## Configuration
+
+aurview works without a config file. If no config exists, it searches AUR only.
+
+Preferred config path:
+
+```text
+~/.config/aurview/config.toml
+```
+
+Local project config is also supported:
+
+```text
+./aurview.toml
+```
+
+Example:
+
+```toml
+default_sources = ["aur"]
+
+[ui]
+theme = "arch"
+
+[[sources]]
+name = "aur"
+type = "aur-rpc"
+enabled = true
+url = "https://aur.archlinux.org/rpc"
+
+[[sources]]
+name = "custom"
+type = "aur-rpc"
+enabled = false
+url = "https://example.com/rpc"
+```
+
+## Package Sources
+
+The default source is `AUR`, backed by the official AUR RPC interface.
+
+Every result shows a source label. If two enabled sources return the same package name, aurview shows both rows so you can tell where each result came from.
+
+Supported source types:
+
+| Type | Description |
+| --- | --- |
+| `aur-rpc` | AUR RPC-compatible read-only metadata endpoint |
+
+## Themes
+
+Built-in themes:
+
+- `arch`
+- `mono`
+- `dark`
+- `light`
+- `high-contrast`
+
+Select a theme in config:
+
+```toml
+[ui]
+theme = "high-contrast"
+```
+
+aurview respects `NO_COLOR` and falls back to readable plain text when color is unavailable.
+
+## Clipboard
+
+On Linux, aurview tries these clipboard providers:
+
+1. `wl-copy`
+2. `xclip -selection clipboard`
+3. `xsel --clipboard --input`
+
+If none are installed, aurview keeps running and shows a warning when copy is requested.
 
 ## Development
+
+Common commands:
 
 ```sh
 make fmt
@@ -73,70 +196,47 @@ make lint
 make build
 ```
 
-Useful direct commands:
+Direct equivalents:
 
 ```sh
+gofmt -w .
 go test ./...
 go vet ./...
-go run ./cmd/aurview
+go build ./cmd/aurview
 ```
 
-## Architecture
+Development notes live in [`/specs`](specs/).
 
-- `cmd/aurview`: dependency wiring and app startup.
-- `internal/app`: application assembly.
-- `internal/aur`: read-only AUR RPC client and package models.
-- `internal/ranking`: isolated relevance scoring.
-- `internal/history`: in-memory and persistent search history.
-- `internal/clipboard`: testable clipboard abstraction and Linux providers.
-- `internal/tui`: Bubble Tea event loop, custom renderer and key handling.
-- `internal/tui/components`: formatting helpers.
-- `internal/tui/keymap`: vim-style action resolver.
-- `internal/tui/theme`: ANSI visual theme with monochrome fallback.
-- `internal/platform`: date conversion helpers.
+## Project Status
 
-## Screenshots
+aurview is an early MVP. The current focus is a polished read-only discovery workflow, clean source abstractions, and a custom terminal interface that does not look like a stock Bubble Tea demo.
 
-Screenshots will be added after the first tagged release.
+## Roadmap
 
-## Clipboard
+- `v0.2.0`: TUI interaction polish.
+- `v0.3.0`: Multi-source package search.
+- `v0.4.0`: Themes and documentation.
+- `v1.0.0`: Stable read-only AUR browser.
 
-On Linux, `aurview` tries providers in this order:
+More detail is tracked in [`specs/github/milestones.md`](specs/github/milestones.md).
 
-1. `wl-copy`
-2. `xclip -selection clipboard`
-3. `xsel --clipboard --input`
+## Contributing
 
-If none are installed, the TUI stays usable and shows a clipboard warning when `Enter` is pressed.
+Contributions should start from `dev`, use focused branches, and keep aurview read-only.
 
-## History
+Before opening a pull request, run:
 
-Search history is kept in memory during the session and saved to:
-
-```text
-$XDG_STATE_HOME/aurview/history
+```sh
+gofmt -w .
+go test ./...
+go vet ./...
+go build ./cmd/aurview
 ```
 
-If `XDG_STATE_HOME` is unset, it falls back to:
+See [`specs/github/contribution-workflow.md`](specs/github/contribution-workflow.md).
 
-```text
-~/.local/state/aurview/history
-```
+## License
 
-## Testing
+aurview is released under the MIT License.
 
-The test suite covers:
-
-- AUR RPC response parsing and client error handling.
-- Relevance ranking behavior.
-- History navigation and persistence.
-- Clipboard fallback behavior.
-- Keymap action resolution.
-- Formatting and date helpers.
-
-## Limitations
-
-- Linux clipboard support is provider based and depends on `wl-copy`, `xclip` or `xsel`.
-- Persistent history uses XDG state paths on Linux.
-- The app is intentionally read-only and does not integrate with AUR helpers or package managers.
-- The TUI depends on terminal size; very small terminals show a size warning.
+Copyright (c) 2026 aurview contributors.
