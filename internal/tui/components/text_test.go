@@ -14,6 +14,16 @@ func TestTruncateAndPad(t *testing.T) {
 	}
 }
 
+func TestANSITextWidth(t *testing.T) {
+	styled := "\x1b[7mabc\x1b[0m"
+	if got := RuneLen(styled); got != 3 {
+		t.Fatalf("RuneLen(styled) = %d, want 3", got)
+	}
+	if got := PadRight(styled, 5); RuneLen(got) != 5 {
+		t.Fatalf("PadRight(styled) visible width = %d, want 5", RuneLen(got))
+	}
+}
+
 func TestFormatPopularity(t *testing.T) {
 	tests := map[float64]string{1.234: "1.23", 12.34: "12.3", 123.4: "123"}
 	for value, want := range tests {
