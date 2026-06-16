@@ -1,6 +1,9 @@
 package aur
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type RPCResponse struct {
 	Version     int       `json:"version"`
@@ -11,6 +14,9 @@ type RPCResponse struct {
 }
 
 type Package struct {
+	Source         string   `json:"-"`
+	SourceType     string   `json:"-"`
+	SourceURL      string   `json:"-"`
 	ID             int      `json:"ID"`
 	Name           string   `json:"Name"`
 	PackageBaseID  int      `json:"PackageBaseID"`
@@ -33,6 +39,13 @@ type Package struct {
 	Conflicts      []string `json:"Conflicts"`
 	Provides       []string `json:"Provides"`
 	Keywords       []string `json:"Keywords"`
+}
+
+func (p Package) DisplaySource() string {
+	if strings.TrimSpace(p.Source) == "" || strings.EqualFold(p.Source, "aur") {
+		return "AUR"
+	}
+	return p.Source
 }
 
 func (p Package) AURURL() string {

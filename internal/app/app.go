@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/kristyancarvalho/aurview/internal/aur"
 	"github.com/kristyancarvalho/aurview/internal/clipboard"
 	"github.com/kristyancarvalho/aurview/internal/config"
 	"github.com/kristyancarvalho/aurview/internal/history"
+	"github.com/kristyancarvalho/aurview/internal/sources"
 	"github.com/kristyancarvalho/aurview/internal/tui"
 )
 
@@ -28,14 +28,23 @@ func Run(ctx context.Context, opts Options) error {
 		_ = historyStore.Save(historyPath)
 	}()
 
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	sourceClient, err := sources.FromConfig(cfg)
+	if err != nil {
+		return err
+	}
+
 	model := tui.New(tui.Options{
-		Client:       aur.NewClient(nil),
+		Client:       sourceClient,
 		Copier:       clipboard.NewLinuxCopier(),
 		History:      historyStore,
 		InitialQuery: strings.TrimSpace(opts.InitialQuery),
 	})
 
 	program := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithContext(ctx))
-	_, err := program.Run()
+	_, err = program.Run()
 	return err
 }
