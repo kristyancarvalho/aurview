@@ -12,11 +12,11 @@ import (
 
 type mouseTestClient struct{}
 
-func (mouseTestClient) Search(context.Context, string, aur.SearchBy) ([]aur.Package, error) {
+func (mouseTestClient) Search(context.Context, string) ([]aur.Package, error) {
 	return nil, nil
 }
 
-func (mouseTestClient) Info(context.Context, ...string) ([]aur.Package, error) {
+func (mouseTestClient) Info(context.Context, string, string) ([]aur.Package, error) {
 	return nil, nil
 }
 

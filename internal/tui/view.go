@@ -99,7 +99,7 @@ func (m Model) renderSearch() string {
 
 func (m Model) renderList(width, height int) string {
 	var b strings.Builder
-	header := fmt.Sprintf("  %-24s %-11s %5s %5s %7s %-10s %-10s %-4s %s", "package", "version", "score", "votes", "pop", "maint", "updated", "flag", "description")
+	header := fmt.Sprintf("  %-8s %-24s %-11s %5s %5s %7s %-10s %-10s %-4s %s", "src", "package", "version", "score", "votes", "pop", "maint", "updated", "flag", "description")
 	b.WriteString(m.theme.Muted(components.Truncate(header, width)))
 
 	if m.loading && len(m.results) == 0 {
@@ -147,8 +147,9 @@ func (m Model) renderRow(index, width int) string {
 	if pkg.IsOrphan() {
 		maint = "orphan"
 	}
-	line := fmt.Sprintf("%s %-24s %-11s %5.1f %5d %7s %-10s %-10s %-4s %s",
+	line := fmt.Sprintf("%s %-8s %-24s %-11s %5.1f %5d %7s %-10s %-10s %-4s %s",
 		marker,
+		components.Truncate(pkg.DisplaySource(), 8),
 		components.Truncate(pkg.Name, 24),
 		components.Truncate(pkg.Version, 11),
 		ranked.Score,
@@ -204,6 +205,7 @@ func (m Model) renderDetail(width, height int) string {
 
 func (m Model) detailLines(pkg aur.Package, width int) []string {
 	out := []string{
+		kv("source", pkg.DisplaySource()),
 		kv("base", pkg.PackageBase),
 		kv("version", pkg.Version),
 		kv("maintainer", pkg.MaintainerName()),

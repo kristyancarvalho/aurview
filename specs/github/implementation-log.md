@@ -23,3 +23,13 @@
 - Added mouse wheel support for result list selection and detail scrolling.
 - Preserved existing keyboard and Vim motion handling.
 - Added TUI mouse interaction tests.
+
+## 2026-06-16 - Configurable sources
+
+- Added TOML config loading with local `./aurview.toml` and XDG config path support.
+- Kept AUR as the default source when no config file exists.
+- Added an isolated `Source` interface and multi-source client.
+- Added AUR RPC source adapter that stamps packages with source metadata.
+- Updated TUI search/detail flow to use package source plus package name for detail lookups.
+- Added source labels in package rows and source metadata in the detail panel.
+- Added tests for config defaults, disabled sources, source parsing and duplicate package names across sources.

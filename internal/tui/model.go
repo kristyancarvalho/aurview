@@ -20,13 +20,13 @@ import (
 
 const debounceDelay = 260 * time.Millisecond
 
-type AURClient interface {
-	Search(ctx context.Context, query string, by aur.SearchBy) ([]aur.Package, error)
-	Info(ctx context.Context, names ...string) ([]aur.Package, error)
+type PackageClient interface {
+	Search(ctx context.Context, query string) ([]aur.Package, error)
+	Info(ctx context.Context, sourceName, name string) ([]aur.Package, error)
 }
 
 type Options struct {
-	Client       AURClient
+	Client       PackageClient
 	Copier       clipboard.Copier
 	History      *history.Store
 	InitialQuery string
@@ -41,7 +41,7 @@ const (
 )
 
 type Model struct {
-	client  AURClient
+	client  PackageClient
 	copier  clipboard.Copier
 	history *history.Store
 	theme   theme.Theme
@@ -155,14 +155,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.fetchSelectedDetail()
 	case detailResultMsg:
 		if msg.err != nil {
-			if m.selectedName() == msg.name {
+			if m.selectedKey() == msg.key() {
 				m.detailLoading = false
 				m.detailError = msg.err.Error()
 			}
 			return m, nil
 		}
-		m.detailCache[msg.name] = msg.pkg.Clone()
-		if m.selectedName() == msg.name {
+		m.detailCache[msg.key()] = msg.pkg.Clone()
+		if m.selectedKey() == msg.key() {
 			m.detailLoading = false
 			m.detailError = ""
 		}
@@ -469,12 +469,31 @@ func (m Model) selectedName() string {
 	return m.results[m.selected].Package.Name
 }
 
-func (m Model) selectedPackage() (aur.Package, bool) {
+func (m Model) selectedSource() string {
+	if len(m.results) == 0 || m.selected < 0 || m.selected >= len(m.results) {
+		return ""
+	}
+	source := m.results[m.selected].Package.Source
+	if source == "" {
+		return "aur"
+	}
+	return source
+}
+
+func (m Model) selectedKey() string {
 	name := m.selectedName()
 	if name == "" {
+		return ""
+	}
+	return packageKey(m.selectedSource(), name)
+}
+
+func (m Model) selectedPackage() (aur.Package, bool) {
+	key := m.selectedKey()
+	if key == "" {
 		return aur.Package{}, false
 	}
-	if pkg, ok := m.detailCache[name]; ok {
+	if pkg, ok := m.detailCache[key]; ok {
 		return pkg.Clone(), true
 	}
 	return m.results[m.selected].Package.Clone(), true
@@ -485,12 +504,13 @@ func (m *Model) fetchSelectedDetail() tea.Cmd {
 	if name == "" {
 		return nil
 	}
-	if _, ok := m.detailCache[name]; ok {
+	source := m.selectedSource()
+	if _, ok := m.detailCache[packageKey(source, name)]; ok {
 		m.detailLoading = false
 		return nil
 	}
 	m.detailLoading = true
-	return infoCmd(m.client, name)
+	return infoCmd(m.client, source, name)
 }
 
 func (m *Model) copySelected() tea.Cmd {
@@ -503,23 +523,23 @@ func (m *Model) copySelected() tea.Cmd {
 	return copyCmd(m.copier, name)
 }
 
-func searchCmd(client AURClient, token int, query string) tea.Cmd {
+func searchCmd(client PackageClient, token int, query string) tea.Cmd {
 	return func() tea.Msg {
-		pkgs, err := client.Search(context.Background(), query, aur.SearchByNameDesc)
+		pkgs, err := client.Search(context.Background(), query)
 		return searchResultMsg{token: token, query: query, packages: pkgs, err: err}
 	}
 }
 
-func infoCmd(client AURClient, name string) tea.Cmd {
+func infoCmd(client PackageClient, source, name string) tea.Cmd {
 	return func() tea.Msg {
-		pkgs, err := client.Info(context.Background(), name)
+		pkgs, err := client.Info(context.Background(), source, name)
 		if err != nil {
-			return detailResultMsg{name: name, err: err}
+			return detailResultMsg{source: source, name: name, err: err}
 		}
 		if len(pkgs) == 0 {
-			return detailResultMsg{name: name, err: errors.New("no detail returned")}
+			return detailResultMsg{source: source, name: name, err: errors.New("no detail returned")}
 		}
-		return detailResultMsg{name: name, pkg: pkgs[0]}
+		return detailResultMsg{source: source, name: name, pkg: pkgs[0]}
 	}
 }
 
@@ -557,9 +577,14 @@ type searchResultMsg struct {
 }
 
 type detailResultMsg struct {
-	name string
-	pkg  aur.Package
-	err  error
+	source string
+	name   string
+	pkg    aur.Package
+	err    error
+}
+
+func (m detailResultMsg) key() string {
+	return packageKey(m.source, m.name)
 }
 
 type copyMsg struct {
@@ -572,6 +597,13 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func packageKey(source, name string) string {
+	if source == "" {
+		source = "aur"
+	}
+	return strings.ToLower(source) + "\x00" + strings.ToLower(name)
 }
 
 type hitKind int

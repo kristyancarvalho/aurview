@@ -2,7 +2,10 @@ module github.com/kristyancarvalho/aurview
 
 go 1.26.4
 
-require github.com/charmbracelet/bubbletea v1.3.10
+require (
+	github.com/charmbracelet/bubbletea v1.3.10
+	github.com/pelletier/go-toml/v2 v2.3.1
+)
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
