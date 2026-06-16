@@ -115,7 +115,7 @@ jobs:
           ./scripts/release/source-archive.sh "$VERSION" "dist/aurview_${VERSION}_source.tar.gz"
 
       - name: Upload release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurview-${{ matrix.archive_suffix }}
           path: dist/aurview_${{ needs.validate.outputs.version }}_${{ matrix.archive_suffix }}.tar.gz
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload source archive
         if: matrix.goarch == 'amd64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurview-source
           path: dist/aurview_${{ needs.validate.outputs.version }}_source.tar.gz
@@ -151,7 +151,7 @@ jobs:
           sha256sum *.tar.gz > "aurview_${VERSION}_SHA256SUMS"
 
       - name: Upload checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurview-checksums
           path: dist/*SHA256SUMS
