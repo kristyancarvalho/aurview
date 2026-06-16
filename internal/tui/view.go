@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/kristyancarvalho/aurview/internal/aur"
 	"github.com/kristyancarvalho/aurview/internal/platform"
+	"github.com/kristyancarvalho/aurview/internal/ranking"
 	"github.com/kristyancarvalho/aurview/internal/tui/components"
 )
 
@@ -99,8 +101,8 @@ func (m Model) renderSearch() string {
 
 func (m Model) renderList(width, height int) string {
 	var b strings.Builder
-	header := fmt.Sprintf("  %-8s %-24s %-11s %5s %5s %7s %-10s %-10s %-4s %s", "src", "package", "version", "score", "votes", "pop", "maint", "updated", "flag", "description")
-	b.WriteString(m.theme.Muted(components.Truncate(header, width)))
+	layout := newListLayout(width)
+	b.WriteString(m.theme.Muted(layout.header()))
 
 	if m.loading && len(m.results) == 0 {
 		b.WriteByte('\n')
@@ -127,12 +129,12 @@ func (m Model) renderList(width, height int) string {
 	end := components.Clamp(m.scroll+visible, 0, len(m.results))
 	for i := m.scroll; i < end; i++ {
 		b.WriteByte('\n')
-		b.WriteString(m.renderRow(i, width))
+		b.WriteString(m.renderRow(i, layout))
 	}
 	return b.String()
 }
 
-func (m Model) renderRow(index, width int) string {
+func (m Model) renderRow(index int, layout listLayout) string {
 	ranked := m.results[index]
 	pkg := ranked.Package
 	marker := " "
@@ -147,20 +149,25 @@ func (m Model) renderRow(index, width int) string {
 	if pkg.IsOrphan() {
 		maint = "orphan"
 	}
-	line := fmt.Sprintf("%s %-8s %-24s %-11s %5.1f %5d %7s %-10s %-10s %-4s %s",
-		marker,
-		m.theme.SourceBadge(components.Truncate(pkg.DisplaySource(), 8)),
-		components.Truncate(pkg.Name, 24),
-		components.Truncate(pkg.Version, 11),
-		ranked.Score,
-		pkg.NumVotes,
-		components.FormatPopularity(pkg.Popularity),
-		components.Truncate(maint, 10),
-		platform.UnixDate(pkg.LastModified),
-		flag,
-		pkg.Description,
-	)
-	line = components.Truncate(line, width)
+	values := map[string]string{
+		"marker":  marker,
+		"source":  pkg.DisplaySource(),
+		"package": pkg.Name,
+		"version": pkg.Version,
+		"score":   fmt.Sprintf("%.1f", ranked.Score),
+		"votes":   strconv.Itoa(pkg.NumVotes),
+		"pop":     components.FormatPopularity(pkg.Popularity),
+		"maint":   maint,
+		"updated": platform.UnixDate(pkg.LastModified),
+		"flag":    flag,
+	}
+	var line string
+	if index == m.selected {
+		line = layout.row(values, nil)
+	} else {
+		line = layout.row(values, m.theme.SourceBadge)
+	}
+	line = components.PadRight(line, layout.width)
 	if index == m.selected {
 		if m.focus == focusList {
 			return m.theme.Selected(line)
@@ -177,18 +184,19 @@ func (m Model) renderDetail(width, height int) string {
 	var b strings.Builder
 	pkg, ok := m.selectedPackage()
 	if !ok {
-		return m.theme.Muted("detail // no package selected")
+		return m.theme.Muted(components.PadRight("detail // no package selected", width))
 	}
 	title := "detail // " + pkg.Name
 	if m.detailLoading {
 		title += " // loading"
 	}
+	title = components.PadRight(components.Truncate(title, width), width)
 	if m.focus == focusDetail {
 		title = m.theme.Focus(title)
 	} else {
 		title = m.theme.Muted(title)
 	}
-	b.WriteString(components.Truncate(title, width))
+	b.WriteString(title)
 
 	lines := m.detailLines(pkg, width)
 	if m.detailError != "" {
@@ -198,36 +206,56 @@ func (m Model) renderDetail(width, height int) string {
 	start := components.Clamp(m.detailScroll, 0, max(0, len(lines)-limit))
 	for i := start; i < len(lines) && i < start+limit; i++ {
 		b.WriteByte('\n')
-		b.WriteString(components.Truncate(lines[i], width))
+		b.WriteString(components.PadRight(components.Truncate(lines[i], width), width))
 	}
 	return b.String()
 }
 
 func (m Model) detailLines(pkg aur.Package, width int) []string {
-	out := []string{
-		kv("source", pkg.DisplaySource()),
-		kv("base", pkg.PackageBase),
-		kv("version", pkg.Version),
-		kv("maintainer", pkg.MaintainerName()),
-		kv("votes", fmt.Sprintf("%d", pkg.NumVotes)),
-		kv("popularity", components.FormatPopularity(pkg.Popularity)),
-		kv("first", platform.UnixDate(pkg.FirstSubmitted)),
-		kv("modified", platform.UnixDate(pkg.LastModified)),
-		kv("out-of-date", platform.OptionalUnixDate(pkg.OutOfDate)),
+	labelWidth := 11
+	out := []string{}
+	addSection := func(title string) {
+		if len(out) > 0 {
+			out = append(out, "")
+		}
+		out = append(out, m.theme.Muted(title))
 	}
-	if pkg.URL != "" {
-		out = append(out, kv("upstream", pkg.URL))
+	addField := func(label, value string) {
+		out = append(out, wrapDetailField(label, value, width, labelWidth)...)
 	}
-	out = append(out, kv("aur", pkg.AURURL()))
-	out = append(out, components.WrapLine("desc", valueOrDash(pkg.Description), width)...)
-	out = append(out, components.WrapLine("license", join(pkg.License), width)...)
-	out = append(out, components.WrapLine("depends", join(pkg.Depends), width)...)
-	out = append(out, components.WrapLine("make", join(pkg.MakeDepends), width)...)
-	out = append(out, components.WrapLine("check", join(pkg.CheckDepends), width)...)
-	out = append(out, components.WrapLine("optional", join(pkg.OptDepends), width)...)
-	out = append(out, components.WrapLine("conflicts", join(pkg.Conflicts), width)...)
-	out = append(out, components.WrapLine("provides", join(pkg.Provides), width)...)
-	out = append(out, components.WrapLine("keywords", join(pkg.Keywords), width)...)
+
+	addSection("Identity")
+	addField("source", pkg.DisplaySource())
+	addField("base", pkg.PackageBase)
+	addField("version", pkg.Version)
+	addField("maintainer", pkg.MaintainerName())
+	addField("license", join(pkg.License))
+
+	addSection("Health")
+	addField("score", selectedScore(m.results, m.selected))
+	addField("votes", fmt.Sprintf("%d", pkg.NumVotes))
+	addField("popularity", components.FormatPopularity(pkg.Popularity))
+	addField("first", platform.UnixDate(pkg.FirstSubmitted))
+	addField("updated", platform.UnixDate(pkg.LastModified))
+	addField("out-of-date", platform.OptionalUnixDate(pkg.OutOfDate))
+
+	addSection("Links")
+	addField("upstream", pkg.URL)
+	addField("aur", pkg.AURURL())
+
+	addSection("Description")
+	out = append(out, wrapDetailText(valueOrDash(pkg.Description), width)...)
+
+	addSection("Relations")
+	addField("depends", join(pkg.Depends))
+	addField("make", join(pkg.MakeDepends))
+	addField("check", join(pkg.CheckDepends))
+	addField("optional", join(pkg.OptDepends))
+	addField("conflicts", join(pkg.Conflicts))
+	addField("provides", join(pkg.Provides))
+
+	addSection("Keywords")
+	out = append(out, wrapDetailText(join(pkg.Keywords), width)...)
 	return out
 }
 
@@ -281,4 +309,214 @@ func valueOrDash(value string) string {
 		return "-"
 	}
 	return value
+}
+
+type columnAlign int
+
+const (
+	alignLeft columnAlign = iota
+	alignRight
+)
+
+type listColumn struct {
+	key       string
+	header    string
+	width     int
+	minWidth  int
+	grow      bool
+	align     columnAlign
+	hideOrder int
+}
+
+type listLayout struct {
+	width   int
+	columns []listColumn
+}
+
+func newListLayout(width int) listLayout {
+	width = max(1, width)
+	columns := []listColumn{
+		{key: "marker", header: "", width: 1, minWidth: 1, align: alignLeft},
+		{key: "source", header: "src", width: 6, minWidth: 3, align: alignLeft},
+		{key: "package", header: "package", width: 18, minWidth: 8, grow: true, align: alignLeft},
+		{key: "version", header: "version", width: 11, minWidth: 7, grow: true, align: alignLeft, hideOrder: 5},
+		{key: "score", header: "score", width: 5, minWidth: 5, align: alignRight},
+		{key: "votes", header: "votes", width: 5, minWidth: 5, align: alignRight, hideOrder: 2},
+		{key: "pop", header: "pop", width: 7, minWidth: 5, align: alignRight, hideOrder: 3},
+		{key: "maint", header: "maint", width: 10, minWidth: 7, grow: true, align: alignLeft, hideOrder: 1},
+		{key: "updated", header: "updated", width: 10, minWidth: 10, align: alignLeft},
+		{key: "flag", header: "flag", width: 4, minWidth: 3, align: alignLeft, hideOrder: 4},
+	}
+	for totalColumnWidth(columns) > width {
+		index := nextHiddenColumn(columns)
+		if index < 0 {
+			break
+		}
+		columns = append(columns[:index], columns[index+1:]...)
+	}
+	for totalColumnWidth(columns) > width {
+		index := widestGrowColumn(columns)
+		if index < 0 || columns[index].width <= columns[index].minWidth {
+			break
+		}
+		columns[index].width--
+	}
+	extra := width - totalColumnWidth(columns)
+	for extra > 0 {
+		index := growColumn(columns)
+		if index < 0 {
+			break
+		}
+		columns[index].width++
+		extra--
+	}
+	return listLayout{width: width, columns: columns}
+}
+
+func (l listLayout) header() string {
+	values := make(map[string]string, len(l.columns))
+	for _, col := range l.columns {
+		values[col.key] = col.header
+	}
+	return components.PadRight(l.format(values, nil), l.width)
+}
+
+func (l listLayout) row(values map[string]string, styleSource func(string) string) string {
+	return components.PadRight(l.format(values, styleSource), l.width)
+}
+
+func (l listLayout) format(values map[string]string, styleSource func(string) string) string {
+	parts := make([]string, 0, len(l.columns))
+	for _, col := range l.columns {
+		value := formatCell(values[col.key], col.width, col.align)
+		if col.key == "source" && styleSource != nil {
+			value = styleSource(value)
+		}
+		parts = append(parts, value)
+	}
+	return strings.Join(parts, " ")
+}
+
+func formatCell(value string, width int, align columnAlign) string {
+	value = components.Truncate(value, width)
+	if align == alignRight {
+		return components.PadLeft(value, width)
+	}
+	return components.PadRight(value, width)
+}
+
+func totalColumnWidth(columns []listColumn) int {
+	if len(columns) == 0 {
+		return 0
+	}
+	total := len(columns) - 1
+	for _, col := range columns {
+		total += col.width
+	}
+	return total
+}
+
+func nextHiddenColumn(columns []listColumn) int {
+	bestIndex := -1
+	bestOrder := 999
+	for i, col := range columns {
+		if col.hideOrder <= 0 {
+			continue
+		}
+		if col.hideOrder < bestOrder {
+			bestOrder = col.hideOrder
+			bestIndex = i
+		}
+	}
+	return bestIndex
+}
+
+func widestGrowColumn(columns []listColumn) int {
+	bestIndex := -1
+	bestWidth := 0
+	for i, col := range columns {
+		if !col.grow || col.width <= col.minWidth {
+			continue
+		}
+		if col.width > bestWidth {
+			bestWidth = col.width
+			bestIndex = i
+		}
+	}
+	return bestIndex
+}
+
+func growColumn(columns []listColumn) int {
+	for i, col := range columns {
+		if col.key == "package" && col.grow {
+			return i
+		}
+	}
+	for i, col := range columns {
+		if col.grow {
+			return i
+		}
+	}
+	return -1
+}
+
+func selectedScore(results []ranking.RankedPackage, selected int) string {
+	if selected < 0 || selected >= len(results) {
+		return "-"
+	}
+	return fmt.Sprintf("%.1f", results[selected].Score)
+}
+
+func wrapDetailField(label, value string, width, labelWidth int) []string {
+	label = components.Truncate(label, labelWidth)
+	prefix := "  " + components.PadRight(label, labelWidth) + " "
+	return wrapWithPrefix(prefix, components.Repeat(" ", components.RuneLen(prefix)), valueOrDash(value), width)
+}
+
+func wrapDetailText(value string, width int) []string {
+	return wrapWithPrefix("  ", "  ", valueOrDash(value), width)
+}
+
+func wrapWithPrefix(firstPrefix, nextPrefix, value string, width int) []string {
+	if width <= 0 {
+		return nil
+	}
+	if width <= components.RuneLen(firstPrefix)+3 {
+		return []string{components.Truncate(firstPrefix+value, width)}
+	}
+	words := strings.Fields(valueOrDash(value))
+	if len(words) == 0 {
+		words = []string{"-"}
+	}
+	lines := []string{}
+	prefix := firstPrefix
+	line := prefix
+	for _, word := range words {
+		available := width - components.RuneLen(prefix)
+		if components.RuneLen(word) > available {
+			if strings.TrimSpace(line) != "" && line != prefix {
+				lines = append(lines, components.PadRight(line, width))
+			}
+			lines = append(lines, components.PadRight(prefix+components.Truncate(word, available), width))
+			prefix = nextPrefix
+			line = prefix
+			continue
+		}
+		separator := ""
+		if line != prefix {
+			separator = " "
+		}
+		if components.RuneLen(line)+components.RuneLen(separator)+components.RuneLen(word) > width {
+			lines = append(lines, components.PadRight(line, width))
+			prefix = nextPrefix
+			line = prefix + word
+			continue
+		}
+		line += separator + word
+	}
+	if strings.TrimSpace(line) == "" {
+		line = prefix + "-"
+	}
+	lines = append(lines, components.PadRight(line, width))
+	return lines
 }

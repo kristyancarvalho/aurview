@@ -2,9 +2,16 @@ package components
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
+
+var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func StripANSI(s string) string {
+	return ansiPattern.ReplaceAllString(s, "")
+}
 
 func Truncate(s string, width int) string {
 	if width <= 0 {
@@ -12,6 +19,9 @@ func Truncate(s string, width int) string {
 	}
 	if RuneLen(s) <= width {
 		return s
+	}
+	if strings.Contains(s, "\x1b[") {
+		s = StripANSI(s)
 	}
 	if width == 1 {
 		return "…"
@@ -22,7 +32,10 @@ func Truncate(s string, width int) string {
 
 func PadRight(s string, width int) string {
 	l := RuneLen(s)
-	if l >= width {
+	if l == width {
+		return s
+	}
+	if l > width {
 		return Truncate(s, width)
 	}
 	return s + strings.Repeat(" ", width-l)
@@ -30,7 +43,10 @@ func PadRight(s string, width int) string {
 
 func PadLeft(s string, width int) string {
 	l := RuneLen(s)
-	if l >= width {
+	if l == width {
+		return s
+	}
+	if l > width {
 		return Truncate(s, width)
 	}
 	return strings.Repeat(" ", width-l) + s
@@ -44,6 +60,9 @@ func Repeat(s string, width int) string {
 }
 
 func RuneLen(s string) int {
+	if strings.Contains(s, "\x1b[") {
+		s = StripANSI(s)
+	}
 	return utf8.RuneCountInString(s)
 }
 
