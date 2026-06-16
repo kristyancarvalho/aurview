@@ -5,11 +5,47 @@ on:
     tags:
       - "v*"
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate semver tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Unsupported tag format: $tag" >&2
+            exit 1
+          fi
+          echo "version=${tag#v}" >>"$GITHUB_OUTPUT"
+
+      - name: Ensure tag commit is on dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin dev
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/dev; then
+            echo "Tag ${GITHUB_REF_NAME} is not reachable from origin/dev" >&2
+            exit 1
+          fi
+
   test:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -32,25 +68,106 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build ./cmd/aurview
+        run: go build ./...
 
-  release:
-    needs: test
+  build:
+    needs:
+      - validate
+      - test
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            archive_suffix: linux-amd64
+          - goarch: arm64
+            archive_suffix: linux-arm64
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Build release binary
+      - name: Build release archive
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ needs.validate.outputs.version }}
         run: |
           mkdir -p dist
-          go build -o "dist/aurview-${GITHUB_REF_NAME}-linux-amd64" ./cmd/aurview
+          package_dir="dist/aurview_${VERSION}_${{ matrix.archive_suffix }}"
+          mkdir -p "$package_dir"
+          go build -trimpath -ldflags="-s -w" -o "$package_dir/aurview" ./cmd/aurview
+          cp LICENSE README.md "$package_dir/"
+          tar -C dist -czf "dist/aurview_${VERSION}_${{ matrix.archive_suffix }}.tar.gz" "aurview_${VERSION}_${{ matrix.archive_suffix }}"
+          rm -rf "$package_dir"
+
+      - name: Build source archive
+        if: matrix.goarch == 'amd64'
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          mkdir -p dist
+          ./scripts/release/source-archive.sh "$VERSION" "dist/aurview_${VERSION}_source.tar.gz"
+
+      - name: Upload release archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurview-${{ matrix.archive_suffix }}
+          path: dist/aurview_${{ needs.validate.outputs.version }}_${{ matrix.archive_suffix }}.tar.gz
+          if-no-files-found: error
+
+      - name: Upload source archive
+        if: matrix.goarch == 'amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurview-source
+          path: dist/aurview_${{ needs.validate.outputs.version }}_source.tar.gz
+          if-no-files-found: error
+
+  checksums:
+    needs:
+      - validate
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.tar.gz > "aurview_${VERSION}_SHA256SUMS"
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurview-checksums
+          path: dist/*SHA256SUMS
+          if-no-files-found: error
+
+  release:
+    needs:
+      - validate
+      - checksums
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
       - name: Publish release
         env:
