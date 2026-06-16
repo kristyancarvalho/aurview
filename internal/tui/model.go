@@ -1,0 +1,509 @@
+package tui
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/kristyancarvalho/aurview/internal/aur"
+	"github.com/kristyancarvalho/aurview/internal/clipboard"
+	"github.com/kristyancarvalho/aurview/internal/history"
+	"github.com/kristyancarvalho/aurview/internal/ranking"
+	"github.com/kristyancarvalho/aurview/internal/tui/components"
+	"github.com/kristyancarvalho/aurview/internal/tui/keymap"
+	"github.com/kristyancarvalho/aurview/internal/tui/theme"
+)
+
+const debounceDelay = 260 * time.Millisecond
+
+type AURClient interface {
+	Search(ctx context.Context, query string, by aur.SearchBy) ([]aur.Package, error)
+	Info(ctx context.Context, names ...string) ([]aur.Package, error)
+}
+
+type Options struct {
+	Client       AURClient
+	Copier       clipboard.Copier
+	History      *history.Store
+	InitialQuery string
+}
+
+type focusArea int
+
+const (
+	focusSearch focusArea = iota
+	focusList
+	focusDetail
+)
+
+type Model struct {
+	client  AURClient
+	copier  clipboard.Copier
+	history *history.Store
+	theme   theme.Theme
+	keys    keymap.Resolver
+	scorer  ranking.Scorer
+
+	width  int
+	height int
+
+	focus focusArea
+	input string
+
+	token       int
+	loading     bool
+	searchError string
+	lastQuery   string
+
+	results  []ranking.RankedPackage
+	selected int
+	scroll   int
+
+	detailCache   map[string]aur.Package
+	detailLoading bool
+	detailError   string
+	detailScroll  int
+
+	help       bool
+	status     string
+	statusKind string
+}
+
+func New(opts Options) Model {
+	if opts.History == nil {
+		opts.History = history.New(history.DefaultLimit)
+	}
+	return Model{
+		client:      opts.Client,
+		copier:      opts.Copier,
+		history:     opts.History,
+		theme:       theme.Detect(),
+		scorer:      ranking.NewScorer(time.Now()),
+		focus:       focusSearch,
+		input:       opts.InitialQuery,
+		detailCache: make(map[string]aur.Package),
+		status:      "read-only: Enter copies package name",
+		statusKind:  "info",
+	}
+}
+
+func (m Model) Init() tea.Cmd {
+	if strings.TrimSpace(m.input) == "" {
+		return nil
+	}
+	return m.scheduleSearch()
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+		m.ensureSelectionVisible()
+		return m, nil
+	case tea.KeyMsg:
+		return m.updateKey(msg)
+	case debounceMsg:
+		if msg.token != m.token {
+			return m, nil
+		}
+		query := strings.TrimSpace(msg.query)
+		if query == "" {
+			m.loading = false
+			m.results = nil
+			m.searchError = ""
+			m.lastQuery = ""
+			return m, nil
+		}
+		m.loading = true
+		m.searchError = ""
+		m.lastQuery = query
+		return m, searchCmd(m.client, msg.token, query)
+	case searchResultMsg:
+		if msg.token != m.token {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			m.results = nil
+			m.searchError = userSearchError(msg.err)
+			m.status = m.searchError
+			m.statusKind = "error"
+			return m, nil
+		}
+		m.history.Add(msg.query)
+		m.results = m.scorer.Rank(msg.query, msg.packages)
+		m.selected = 0
+		m.scroll = 0
+		m.detailScroll = 0
+		m.searchError = ""
+		if len(m.results) == 0 {
+			m.status = "no packages matched " + msg.query
+			m.statusKind = "warn"
+			return m, nil
+		}
+		m.status = fmt.Sprintf("%d packages ranked for %q", len(m.results), msg.query)
+		m.statusKind = "ok"
+		return m, m.fetchSelectedDetail()
+	case detailResultMsg:
+		if msg.err != nil {
+			if m.selectedName() == msg.name {
+				m.detailLoading = false
+				m.detailError = msg.err.Error()
+			}
+			return m, nil
+		}
+		m.detailCache[msg.name] = msg.pkg.Clone()
+		if m.selectedName() == msg.name {
+			m.detailLoading = false
+			m.detailError = ""
+		}
+		return m, nil
+	case copyMsg:
+		if msg.err != nil {
+			m.status = "clipboard unavailable: " + msg.err.Error()
+			m.statusKind = "warn"
+			return m, nil
+		}
+		m.status = "copied " + msg.name
+		m.statusKind = "ok"
+		return m, nil
+	default:
+		return m, nil
+	}
+}
+
+func (m Model) updateKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if m.help {
+		if msg.String() == "?" || msg.String() == "esc" || msg.String() == "q" {
+			m.help = false
+			return m, nil
+		}
+		return m, nil
+	}
+
+	if m.focus == focusSearch {
+		if next, ok := m.editInput(msg); ok {
+			m = next
+			return m, m.scheduleSearch()
+		}
+	}
+
+	action := m.keys.Resolve(msg.String(), m.focus == focusSearch)
+	switch action {
+	case keymap.ActionQuit:
+		return m, tea.Quit
+	case keymap.ActionHelp:
+		m.help = !m.help
+	case keymap.ActionSearch:
+		m.focus = focusSearch
+	case keymap.ActionBlur:
+		if m.focus == focusSearch {
+			m.focus = focusList
+		}
+	case keymap.ActionCopy:
+		cmd := m.copySelected()
+		return m, cmd
+	case keymap.ActionDown:
+		if m.focus == focusDetail {
+			m.moveDetail(1)
+			return m, nil
+		}
+		m.moveSelection(1)
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionUp:
+		if m.focus == focusDetail {
+			m.moveDetail(-1)
+			return m, nil
+		}
+		m.moveSelection(-1)
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionLeft:
+		if m.focus == focusDetail {
+			m.focus = focusList
+		} else {
+			m.focus = focusSearch
+		}
+	case keymap.ActionRight:
+		if m.focus == focusSearch {
+			m.focus = focusList
+		} else {
+			m.focus = focusDetail
+		}
+	case keymap.ActionTop:
+		if m.focus == focusDetail {
+			m.detailScroll = 0
+			return m, nil
+		}
+		m.selected, m.scroll = 0, 0
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionBottom:
+		if m.focus == focusDetail {
+			m.detailScroll = 9999
+			return m, nil
+		}
+		if len(m.results) > 0 {
+			m.selected = len(m.results) - 1
+			m.ensureSelectionVisible()
+		}
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionHalfDown:
+		if m.focus == focusDetail {
+			m.moveDetail(max(1, m.detailHeight()/2))
+			return m, nil
+		}
+		m.moveSelection(max(1, m.listHeight()/2))
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionHalfUp:
+		if m.focus == focusDetail {
+			m.moveDetail(-max(1, m.detailHeight()/2))
+			return m, nil
+		}
+		m.moveSelection(-max(1, m.listHeight()/2))
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionPageDown:
+		if m.focus == focusDetail {
+			m.moveDetail(max(1, m.detailHeight()))
+			return m, nil
+		}
+		m.moveSelection(max(1, m.listHeight()))
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionPageUp:
+		if m.focus == focusDetail {
+			m.moveDetail(-max(1, m.detailHeight()))
+			return m, nil
+		}
+		m.moveSelection(-max(1, m.listHeight()))
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case keymap.ActionHistoryPrev:
+		cmd := m.setHistory(m.history.Prev())
+		return m, cmd
+	case keymap.ActionHistoryNext:
+		cmd := m.setHistory(m.history.Next())
+		return m, cmd
+	}
+	return m, nil
+}
+
+func (m Model) editInput(msg tea.KeyMsg) (Model, bool) {
+	switch msg.Type {
+	case tea.KeyBackspace, tea.KeyCtrlH:
+		if len(m.input) == 0 {
+			return m, false
+		}
+		runes := []rune(m.input)
+		m.input = string(runes[:len(runes)-1])
+		m.token++
+		m.loading = strings.TrimSpace(m.input) != ""
+		return m, true
+	case tea.KeySpace:
+		m.input += " "
+		m.token++
+		m.loading = strings.TrimSpace(m.input) != ""
+		return m, true
+	case tea.KeyRunes:
+		value := msg.String()
+		if value == "?" || value == "/" {
+			return m, false
+		}
+		m.input += value
+		m.token++
+		m.loading = strings.TrimSpace(m.input) != ""
+		return m, true
+	default:
+		return m, false
+	}
+}
+
+func (m *Model) setHistory(value string, ok bool) tea.Cmd {
+	if !ok {
+		m.status = "history boundary"
+		m.statusKind = "info"
+		return nil
+	}
+	m.input = value
+	m.focus = focusSearch
+	m.token++
+	m.loading = true
+	return m.scheduleSearch()
+}
+
+func (m Model) scheduleSearch() tea.Cmd {
+	token := m.token
+	query := m.input
+	return tea.Tick(debounceDelay, func(time.Time) tea.Msg {
+		return debounceMsg{token: token, query: query}
+	})
+}
+
+func (m *Model) moveSelection(delta int) {
+	if len(m.results) == 0 {
+		return
+	}
+	m.selected = components.Clamp(m.selected+delta, 0, len(m.results)-1)
+	m.detailScroll = 0
+	m.ensureSelectionVisible()
+}
+
+func (m *Model) moveDetail(delta int) {
+	m.detailScroll = max(0, m.detailScroll+delta)
+}
+
+func (m *Model) ensureSelectionVisible() {
+	visible := m.listHeight()
+	if visible <= 0 {
+		return
+	}
+	if m.selected < m.scroll {
+		m.scroll = m.selected
+	}
+	if m.selected >= m.scroll+visible {
+		m.scroll = m.selected - visible + 1
+	}
+	if m.scroll < 0 {
+		m.scroll = 0
+	}
+}
+
+func (m Model) listHeight() int {
+	if m.height <= 0 {
+		return 10
+	}
+	if m.width >= 110 {
+		return max(1, m.height-5)
+	}
+	return max(1, (m.height-6)*2/3)
+}
+
+func (m Model) detailHeight() int {
+	if m.height <= 0 {
+		return 10
+	}
+	if m.width >= 110 {
+		return max(1, m.height-5)
+	}
+	return max(1, m.height-m.listHeight()-6)
+}
+
+func (m Model) selectedName() string {
+	if len(m.results) == 0 || m.selected < 0 || m.selected >= len(m.results) {
+		return ""
+	}
+	return m.results[m.selected].Package.Name
+}
+
+func (m Model) selectedPackage() (aur.Package, bool) {
+	name := m.selectedName()
+	if name == "" {
+		return aur.Package{}, false
+	}
+	if pkg, ok := m.detailCache[name]; ok {
+		return pkg.Clone(), true
+	}
+	return m.results[m.selected].Package.Clone(), true
+}
+
+func (m *Model) fetchSelectedDetail() tea.Cmd {
+	name := m.selectedName()
+	if name == "" {
+		return nil
+	}
+	if _, ok := m.detailCache[name]; ok {
+		m.detailLoading = false
+		return nil
+	}
+	m.detailLoading = true
+	return infoCmd(m.client, name)
+}
+
+func (m *Model) copySelected() tea.Cmd {
+	name := m.selectedName()
+	if name == "" {
+		m.status = "nothing selected"
+		m.statusKind = "warn"
+		return nil
+	}
+	return copyCmd(m.copier, name)
+}
+
+func searchCmd(client AURClient, token int, query string) tea.Cmd {
+	return func() tea.Msg {
+		pkgs, err := client.Search(context.Background(), query, aur.SearchByNameDesc)
+		return searchResultMsg{token: token, query: query, packages: pkgs, err: err}
+	}
+}
+
+func infoCmd(client AURClient, name string) tea.Cmd {
+	return func() tea.Msg {
+		pkgs, err := client.Info(context.Background(), name)
+		if err != nil {
+			return detailResultMsg{name: name, err: err}
+		}
+		if len(pkgs) == 0 {
+			return detailResultMsg{name: name, err: errors.New("no detail returned")}
+		}
+		return detailResultMsg{name: name, pkg: pkgs[0]}
+	}
+}
+
+func copyCmd(copier clipboard.Copier, name string) tea.Cmd {
+	return func() tea.Msg {
+		if copier == nil {
+			return copyMsg{name: name, err: clipboard.ErrUnavailable}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		return copyMsg{name: name, err: copier.Copy(ctx, name)}
+	}
+}
+
+func userSearchError(err error) string {
+	if errors.Is(err, aur.ErrRateLimit) {
+		return "AUR RPC rate limit reached; pause before searching again"
+	}
+	if errors.Is(err, aur.ErrEmptyQuery) {
+		return "empty search"
+	}
+	return "search failed: " + err.Error()
+}
+
+type debounceMsg struct {
+	token int
+	query string
+}
+
+type searchResultMsg struct {
+	token    int
+	query    string
+	packages []aur.Package
+	err      error
+}
+
+type detailResultMsg struct {
+	name string
+	pkg  aur.Package
+	err  error
+}
+
+type copyMsg struct {
+	name string
+	err  error
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

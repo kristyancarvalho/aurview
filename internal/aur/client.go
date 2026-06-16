@@ -196,7 +196,6 @@ func (c *Client) get(ctx context.Context, values url.Values, target any) error {
 	}
 
 	dec := json.NewDecoder(resp.Body)
-	dec.DisallowUnknownFields()
 	if err := dec.Decode(target); err != nil {
 		return fmt.Errorf("decode AUR RPC response: %w", err)
 	}
