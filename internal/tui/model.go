@@ -30,6 +30,7 @@ type Options struct {
 	Copier       clipboard.Copier
 	History      *history.Store
 	InitialQuery string
+	Theme        theme.Theme
 }
 
 type focusArea int
@@ -80,11 +81,14 @@ func New(opts Options) Model {
 	if opts.History == nil {
 		opts.History = history.New(history.DefaultLimit)
 	}
+	if opts.Theme.Name == "" {
+		opts.Theme, _ = theme.Detect("arch")
+	}
 	return Model{
 		client:      opts.Client,
 		copier:      opts.Copier,
 		history:     opts.History,
-		theme:       theme.Detect(),
+		theme:       opts.Theme,
 		scorer:      ranking.NewScorer(time.Now()),
 		focus:       focusSearch,
 		input:       opts.InitialQuery,

@@ -33,3 +33,14 @@
 - Updated TUI search/detail flow to use package source plus package name for detail lookups.
 - Added source labels in package rows and source metadata in the detail panel.
 - Added tests for config defaults, disabled sources, source parsing and duplicate package names across sources.
+
+## 2026-06-16 - Themes and documentation
+
+- Added built-in themes: `arch`, `mono`, `dark`, `light` and `high-contrast`.
+- Wired `[ui].theme` config into app startup.
+- Added theme tests for lookup, fallback and monochrome behavior.
+- Rewrote README as a beginner-friendly guide with read-only safety, usage, config, themes, sources, mouse and roadmap sections.
+- Added open-source badges for CI, Go version, license, releases, issues, pull requests, last commit, stars, forks and Go Report Card.
+- Added MIT license credited to `aurview contributors`.
+- Added maintainer specs for architecture, AUR RPC, configuration, themes, keyboard/mouse and ranking.
+- Manually verified a temporary `mono` config starts the app and an invalid theme returns a helpful error.

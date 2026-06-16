@@ -12,6 +12,7 @@ import (
 	"github.com/kristyancarvalho/aurview/internal/history"
 	"github.com/kristyancarvalho/aurview/internal/sources"
 	"github.com/kristyancarvalho/aurview/internal/tui"
+	"github.com/kristyancarvalho/aurview/internal/tui/theme"
 )
 
 type Options struct {
@@ -36,12 +37,17 @@ func Run(ctx context.Context, opts Options) error {
 	if err != nil {
 		return err
 	}
+	selectedTheme, err := theme.Detect(cfg.UI.Theme)
+	if err != nil {
+		return err
+	}
 
 	model := tui.New(tui.Options{
 		Client:       sourceClient,
 		Copier:       clipboard.NewLinuxCopier(),
 		History:      historyStore,
 		InitialQuery: strings.TrimSpace(opts.InitialQuery),
+		Theme:        selectedTheme,
 	})
 
 	program := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithContext(ctx))

@@ -39,7 +39,7 @@ func (m Model) View() string {
 				r = right[i]
 			}
 			b.WriteString(components.PadRight(l, leftWidth))
-			b.WriteString(m.theme.Muted("|"))
+			b.WriteString(m.theme.Muted(m.theme.PanelDivider))
 			b.WriteString(r)
 			if i < rows-1 {
 				b.WriteByte('\n')
@@ -49,7 +49,7 @@ func (m Model) View() string {
 		listHeight := max(3, (m.height-5)*2/3)
 		b.WriteString(m.renderList(m.width, listHeight))
 		b.WriteByte('\n')
-		b.WriteString(m.theme.Muted(components.Repeat("-", m.width)))
+		b.WriteString(m.theme.Muted(components.Repeat(m.theme.Separator, m.width)))
 		b.WriteByte('\n')
 		b.WriteString(m.renderDetail(m.width, m.height-listHeight-6))
 	}
@@ -149,7 +149,7 @@ func (m Model) renderRow(index, width int) string {
 	}
 	line := fmt.Sprintf("%s %-8s %-24s %-11s %5.1f %5d %7s %-10s %-10s %-4s %s",
 		marker,
-		components.Truncate(pkg.DisplaySource(), 8),
+		m.theme.SourceBadge(components.Truncate(pkg.DisplaySource(), 8)),
 		components.Truncate(pkg.Name, 24),
 		components.Truncate(pkg.Version, 11),
 		ranked.Score,
@@ -163,7 +163,7 @@ func (m Model) renderRow(index, width int) string {
 	line = components.Truncate(line, width)
 	if index == m.selected {
 		if m.focus == focusList {
-			return m.theme.Reverse(line)
+			return m.theme.Selected(line)
 		}
 		return m.theme.Focus(line)
 	}
