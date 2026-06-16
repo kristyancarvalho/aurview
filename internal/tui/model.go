@@ -71,6 +71,9 @@ type Model struct {
 	help       bool
 	status     string
 	statusKind string
+
+	lastClickName string
+	lastClickAt   time.Time
 }
 
 func New(opts Options) Model {
@@ -106,6 +109,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		return m.updateKey(msg)
+	case tea.MouseMsg:
+		return m.updateMouse(msg)
 	case debounceMsg:
 		if msg.token != m.token {
 			return m, nil
@@ -174,6 +179,67 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	default:
 		return m, nil
 	}
+}
+
+func (m Model) updateMouse(msg tea.MouseMsg) (Model, tea.Cmd) {
+	if m.help {
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+			m.help = false
+		}
+		return m, nil
+	}
+
+	area := m.hitArea(msg.X, msg.Y)
+	switch msg.Button {
+	case tea.MouseButtonLeft:
+		if msg.Action != tea.MouseActionPress {
+			return m, nil
+		}
+		switch area.kind {
+		case hitSearch:
+			m.focus = focusSearch
+			m.status = "search focused"
+			m.statusKind = "info"
+		case hitListRow:
+			m.focus = focusList
+			m.selected = area.index
+			m.detailScroll = 0
+			m.ensureSelectionVisible()
+			name := m.selectedName()
+			doubleClick := name != "" && name == m.lastClickName && time.Since(m.lastClickAt) <= 450*time.Millisecond
+			m.lastClickName = name
+			m.lastClickAt = time.Now()
+			if doubleClick {
+				cmd := m.copySelected()
+				return m, cmd
+			}
+			cmd := m.fetchSelectedDetail()
+			return m, cmd
+		case hitDetail:
+			m.focus = focusDetail
+		}
+	case tea.MouseButtonWheelDown:
+		return m.updateMouseWheel(area, 3)
+	case tea.MouseButtonWheelUp:
+		return m.updateMouseWheel(area, -3)
+	}
+	return m, nil
+}
+
+func (m Model) updateMouseWheel(area hitResult, delta int) (Model, tea.Cmd) {
+	switch area.kind {
+	case hitDetail:
+		m.focus = focusDetail
+		m.moveDetail(delta)
+	case hitList, hitListRow:
+		m.focus = focusList
+		m.moveSelection(delta)
+		cmd := m.fetchSelectedDetail()
+		return m, cmd
+	case hitSearch:
+		m.focus = focusSearch
+	}
+	return m, nil
 }
 
 func (m Model) updateKey(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -506,4 +572,59 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+type hitKind int
+
+const (
+	hitNone hitKind = iota
+	hitSearch
+	hitList
+	hitListRow
+	hitDetail
+)
+
+type hitResult struct {
+	kind  hitKind
+	index int
+}
+
+func (m Model) hitArea(x, y int) hitResult {
+	if y == 1 {
+		return hitResult{kind: hitSearch}
+	}
+	if m.width >= 110 {
+		leftWidth := max(62, m.width*58/100)
+		if y >= 2 {
+			if x <= leftWidth {
+				return m.hitList(y, 2)
+			}
+			return hitResult{kind: hitDetail}
+		}
+		return hitResult{kind: hitNone}
+	}
+	listHeight := max(3, (m.height-5)*2/3)
+	if y >= 2 && y <= 2+listHeight {
+		return m.hitList(y, 2)
+	}
+	if y > 2+listHeight {
+		return hitResult{kind: hitDetail}
+	}
+	return hitResult{kind: hitNone}
+}
+
+func (m Model) hitList(y, headerY int) hitResult {
+	if y == headerY {
+		return hitResult{kind: hitList}
+	}
+	row := y - headerY - 1
+	visible := m.listHeight()
+	if row < 0 || row >= visible {
+		return hitResult{kind: hitList}
+	}
+	index := m.scroll + row
+	if index < 0 || index >= len(m.results) {
+		return hitResult{kind: hitList}
+	}
+	return hitResult{kind: hitListRow, index: index}
 }

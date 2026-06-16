@@ -250,6 +250,7 @@ func (m Model) renderHelp() string {
 		"ctrl+f/b   page",
 		"n / N      history newer / older",
 		"enter      copy selected package name",
+		"mouse      click rows/search, wheel list/detail",
 		"esc        blur or close",
 		"?          close help",
 		"q          quit",

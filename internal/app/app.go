@@ -35,7 +35,7 @@ func Run(ctx context.Context, opts Options) error {
 		InitialQuery: strings.TrimSpace(opts.InitialQuery),
 	})
 
-	program := tea.NewProgram(model, tea.WithAltScreen(), tea.WithContext(ctx))
+	program := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithContext(ctx))
 	_, err := program.Run()
 	return err
 }
