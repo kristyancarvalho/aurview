@@ -1,0 +1,14 @@
+pkgbase = aurview
+	pkgdesc = Read-only AUR/package metadata browser TUI
+	pkgver = 0.4.0
+	pkgrel = 1
+	url = https://github.com/kristyancarvalho/aurview
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = go
+	options = !debug
+	source = aurview_0.4.0_source.tar.gz::https://github.com/kristyancarvalho/aurview/releases/download/v0.4.0/aurview_0.4.0_source.tar.gz
+	sha256sums = 62a9e4224bef7f8966522ce154299b36a1f29ddd9194e7e429d7e6a741ce3dfb
+
+pkgname = aurview

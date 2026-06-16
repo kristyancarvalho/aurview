@@ -1,0 +1,23 @@
+pkgname=aurview
+pkgver=0.4.0
+pkgrel=1
+pkgdesc="Read-only AUR/package metadata browser TUI"
+arch=("x86_64" "aarch64")
+url="https://github.com/kristyancarvalho/aurview"
+license=("MIT")
+makedepends=("go")
+options=("!debug")
+source=("${pkgname}_${pkgver}_source.tar.gz::https://github.com/kristyancarvalho/aurview/releases/download/v${pkgver}/${pkgname}_${pkgver}_source.tar.gz")
+sha256sums=("62a9e4224bef7f8966522ce154299b36a1f29ddd9194e7e429d7e6a741ce3dfb")
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  export CGO_ENABLED=0
+  go build -trimpath -ldflags="-s -w" -o aurview ./cmd/aurview
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  install -Dm755 aurview "${pkgdir}/usr/bin/aurview"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
