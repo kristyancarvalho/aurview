@@ -112,12 +112,7 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
           mkdir -p dist
-          git archive \
-            --format=tar.gz \
-            --prefix="aurview-${VERSION}/" \
-            -o "dist/aurview_${VERSION}_source.tar.gz" \
-            "$GITHUB_REF_NAME" \
-            README.md LICENSE CHANGELOG.md CONTRIBUTING.md go.mod go.sum cmd internal docs
+          ./scripts/release/source-archive.sh "$VERSION" "dist/aurview_${VERSION}_source.tar.gz"
 
       - name: Upload release archive
         uses: actions/upload-artifact@v4
