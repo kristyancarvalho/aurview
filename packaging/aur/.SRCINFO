@@ -9,6 +9,6 @@ pkgbase = aurview
 	makedepends = go
 	options = !debug
 	source = aurview_0.4.1_source.tar.gz::https://github.com/kristyancarvalho/aurview/releases/download/v0.4.1/aurview_0.4.1_source.tar.gz
-	sha256sums = fd669bb7d769b1b92578b48182a025c1ab70fc81a44821ab95144f9c46a9a40a
+	sha256sums = fdd40868a4d5e82b7fa016bd80801a88e0064f470fdf4a8d21d395a6b4ee633c
 
 pkgname = aurview
