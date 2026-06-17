@@ -37,7 +37,7 @@ func Run(ctx context.Context, opts Options) error {
 	if err != nil {
 		return err
 	}
-	selectedTheme, err := theme.Detect(cfg.UI.Theme)
+	selectedTheme, err := theme.DetectWithColors(cfg.UI.Theme, themeColors(cfg.Theme))
 	if err != nil {
 		return err
 	}
@@ -53,4 +53,28 @@ func Run(ctx context.Context, opts Options) error {
 	program := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithContext(ctx))
 	_, err = program.Run()
 	return err
+}
+
+func themeColors(cfg config.ThemeConfig) theme.ColorConfig {
+	return theme.ColorConfig{
+		Accent:      cfg.Accent,
+		Good:        cfg.Good,
+		Warn:        cfg.Warn,
+		Danger:      cfg.Danger,
+		Muted:       cfg.Muted,
+		Dim:         cfg.Dim,
+		Focus:       cfg.Focus,
+		SelectedFG:  cfg.SelectedFG,
+		SelectedBG:  cfg.SelectedBG,
+		BadgeFG:     cfg.BadgeFG,
+		BadgeBG:     cfg.BadgeBG,
+		HeaderFG:    cfg.HeaderFG,
+		HeaderBG:    cfg.HeaderBG,
+		FilterFG:    cfg.FilterFG,
+		FilterBG:    cfg.FilterBG,
+		FilterOnFG:  cfg.FilterOnFG,
+		FilterOnBG:  cfg.FilterOnBG,
+		FilterHotFG: cfg.FilterHotFG,
+		FilterHotBG: cfg.FilterHotBG,
+	}
 }
