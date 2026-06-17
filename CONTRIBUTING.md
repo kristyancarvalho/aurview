@@ -5,9 +5,12 @@ aurview uses `dev` as the integration branch and keeps `main` stable.
 ## Branching
 
 - Start feature work from `dev`.
-- Use focused staging branches, for example `staging/tui-layout-fixes`.
+- Use focused local staging branches, for example `staging/tui-layout-fixes`.
+- Keep staging branches local-only; do not push `staging/*`, `fix/*`, `wip/*` or
+  `temp/*` branches unless the repository owner explicitly asks for it.
 - Do not commit directly to `main`.
-- Merge back into `dev` only after validation passes.
+- Merge staging branches back into local `dev` only after validation passes.
+- Re-run validation on `dev`, then push only `dev`.
 
 ## Commit Style
 
