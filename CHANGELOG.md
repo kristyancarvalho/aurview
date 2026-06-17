@@ -7,9 +7,24 @@ for tagged releases.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-17
+
+### Added
+
+- Release notes under `docs/release-notes.md`
+- Build-time version output through `aurview --version`
+
 ### Changed
 
-- Keep `docs/` reserved for release notes and keep staging branches local-only.
+- Simplified `README.md` around practical installation, usage, configuration and release information
+- Validated release tags against `main`, the stable release branch
+- Updated release artifact upload/download actions
+- Kept staging branches local-only and `docs/` focused on release notes
+- Updated AUR package metadata for the `v0.4.1` release
+
+### Fixed
+
+- Made source archive generation tolerate repositories without a `docs/` directory
 
 ## [0.4.0] - 2026-06-16
 

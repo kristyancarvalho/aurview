@@ -23,7 +23,11 @@ prefix="aurview-${version}"
 mkdir -p "${stage_dir}/${prefix}"
 
 cd "$repo_root"
-cp -R README.md LICENSE CHANGELOG.md CONTRIBUTING.md go.mod go.sum cmd internal docs "${stage_dir}/${prefix}/"
+archive_paths=(README.md LICENSE CHANGELOG.md CONTRIBUTING.md go.mod go.sum cmd internal)
+if [[ -d docs ]]; then
+  archive_paths+=(docs)
+fi
+cp -R "${archive_paths[@]}" "${stage_dir}/${prefix}/"
 mkdir -p "$(dirname "$output")"
 tar \
   --sort=name \
