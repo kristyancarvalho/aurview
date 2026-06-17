@@ -1,5 +1,39 @@
 # Release Notes
 
+## v0.5.0 - 2026-06-17
+
+### Summary
+
+Feature release adding read-only local Arch repository search, Matugen-generated color themes and complete practical config documentation.
+
+### Added
+
+- Local pacman sync database sources for repositories detected by `pacman-conf --repo-list`
+- Default search coverage for AUR plus detected local repositories such as `core`, `extra`, `multilib` and `chaotic-aur`
+- Read-only parsing for `/var/lib/pacman/sync/<repo>.db`, including gzip and zstd databases
+- Matugen color-only theme support with safe fallback for invalid or missing hex colors
+- README configuration docs for paths, precedence, `[ui]`, `[theme]`, `[[sources]]`, source types and examples
+
+### Changed
+
+- Mixed AUR and local repository search results clearly preserve source labels in results, filters and details
+- Missing local sync databases no longer prevent other configured sources from returning results
+
+### Known Limitations
+
+- aurview still does not install, remove, upgrade, clone, build or mutate packages.
+- Local repository metadata depends on existing pacman sync databases; aurview does not refresh them.
+
+### Validation Notes
+
+- `gofmt -w .`
+- `go test ./...`
+- `go vet ./...`
+- `go build ./cmd/aurview`
+- Local search validation against AUR, `core`, `extra`, `multilib` and `chaotic-aur`
+- Missing local sync database validation
+- Matugen template validation
+
 ## v0.4.2 - 2026-06-17
 
 ### Summary

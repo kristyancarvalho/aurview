@@ -7,6 +7,21 @@ for tagged releases.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-17
+
+### Added
+
+- Read-only local pacman sync database sources for detected repositories such as `core`, `extra`, `multilib` and `chaotic-aur`
+- Automatic local repository detection through `pacman-conf --repo-list`
+- Matugen color theme support through `[ui].theme = "matugen"` and `[theme]` hex color fields
+- Configuration documentation covering paths, precedence, source options, local repository detection and Matugen templates
+
+### Changed
+
+- Default sources now include AUR plus detected enabled local pacman repositories
+- Search results and filters continue to label each package by source repository across mixed AUR and local results
+- Missing local sync databases are skipped without failing other sources
+
 ## [0.4.2] - 2026-06-17
 
 ### Added

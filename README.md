@@ -8,14 +8,14 @@ It does not install, download, clone, build, update, remove or execute packages.
 
 ## Features
 
-- Read-only AUR RPC search
+- Read-only AUR RPC and local pacman repository search
 - Local relevance ranking
 - Package details for versions, votes, popularity, dependencies, licenses and URLs
 - Interactive filters for source, maintainer, out-of-date status, votes, popularity, recency and match mode
 - Keyboard-first navigation with optional mouse support
 - Search history and clipboard copy
-- Configurable AUR-compatible metadata sources
-- Built-in `arch`, `mono`, `dark`, `light` and `high-contrast` themes
+- Configurable AUR-compatible and local pacman sync database sources
+- Built-in `arch`, `mono`, `dark`, `light` and `high-contrast` themes, plus Matugen color themes
 - Build-time version, commit and date metadata
 
 ## Installation
@@ -97,19 +97,137 @@ Use the compact filter bar to narrow results without running a new search.
 
 ## Configuration
 
-aurview works without a config file. It loads `./aurview.toml` first, then `~/.config/aurview/config.toml`.
+aurview works without a config file. It loads config in this order:
+
+1. `./aurview.toml`
+2. `$XDG_CONFIG_HOME/aurview/config.toml`
+3. `~/.config/aurview/config.toml`
+
+The first existing file wins. If no config exists, aurview enables AUR and every local pacman repository returned by `pacman-conf --repo-list`. Local repository metadata is read from `/var/lib/pacman/sync/<repo>.db`; missing databases are skipped without failing the whole search.
+
+Supported top-level option:
+
+- `default_sources`: source names to search by default. Leave empty or omit to use all enabled sources.
+
+Supported `[ui]` option:
+
+- `theme`: `arch`, `mono`, `dark`, `light`, `high-contrast` or `matugen`.
+
+Supported `[[sources]]` options:
+
+- `name`: unique source name shown in search results.
+- `type`: `aur-rpc` or `pacman-syncdb`.
+- `enabled`: optional boolean, defaults to `true`.
+- `url`: AUR RPC endpoint for `aur-rpc` sources.
+- `repo`: pacman repository name for `pacman-syncdb` sources.
+- `db_path`: sync database path for `pacman-syncdb` sources.
+
+`aur-rpc` sources are read-only HTTP metadata sources. `pacman-syncdb` sources are read-only local sync database sources. aurview never installs, removes, upgrades, builds or mutates packages.
+
+Complete example:
 
 ```toml
-default_sources = ["aur"]
+default_sources = ["aur", "core", "extra", "multilib", "chaotic-aur"]
 
 [ui]
-theme = "arch"
+theme = "matugen"
+
+[theme]
+accent = "{{colors.primary.default.hex}}"
+good = "{{colors.tertiary.default.hex}}"
+warn = "{{colors.secondary.default.hex}}"
+danger = "{{colors.error.default.hex}}"
+muted = "{{colors.on_surface_variant.default.hex}}"
+dim = "{{colors.outline.default.hex}}"
+focus = "{{colors.inverse_primary.default.hex}}"
+
+selected_fg = "{{colors.on_primary.default.hex}}"
+selected_bg = "{{colors.primary.default.hex}}"
+
+badge_fg = "{{colors.on_tertiary.default.hex}}"
+badge_bg = "{{colors.tertiary.default.hex}}"
+
+header_fg = "{{colors.on_primary.default.hex}}"
+header_bg = "{{colors.primary.default.hex}}"
+
+filter_fg = "{{colors.on_surface_variant.default.hex}}"
+filter_bg = "{{colors.surface_container_high.default.hex}}"
+
+filter_on_fg = "{{colors.on_primary.default.hex}}"
+filter_on_bg = "{{colors.primary.default.hex}}"
+
+filter_hot_fg = "{{colors.on_secondary.default.hex}}"
+filter_hot_bg = "{{colors.secondary.default.hex}}"
 
 [[sources]]
 name = "aur"
 type = "aur-rpc"
 enabled = true
 url = "https://aur.archlinux.org/rpc"
+
+[[sources]]
+name = "core"
+type = "pacman-syncdb"
+enabled = true
+repo = "core"
+db_path = "/var/lib/pacman/sync/core.db"
+
+[[sources]]
+name = "extra"
+type = "pacman-syncdb"
+enabled = true
+repo = "extra"
+db_path = "/var/lib/pacman/sync/extra.db"
+
+[[sources]]
+name = "multilib"
+type = "pacman-syncdb"
+enabled = true
+repo = "multilib"
+db_path = "/var/lib/pacman/sync/multilib.db"
+
+[[sources]]
+name = "chaotic-aur"
+type = "pacman-syncdb"
+enabled = true
+repo = "chaotic-aur"
+db_path = "/var/lib/pacman/sync/chaotic-aur.db"
+```
+
+For Matugen, set `[ui].theme` to `matugen` and generate only color fields. Invalid hex colors are ignored field-by-field and missing fields fall back to the built-in `arch` theme colors.
+
+Matugen template example:
+
+```toml
+[ui]
+theme = "matugen"
+
+[theme]
+accent = "{{colors.primary.default.hex}}"
+good = "{{colors.tertiary.default.hex}}"
+warn = "{{colors.secondary.default.hex}}"
+danger = "{{colors.error.default.hex}}"
+muted = "{{colors.on_surface_variant.default.hex}}"
+dim = "{{colors.outline.default.hex}}"
+focus = "{{colors.inverse_primary.default.hex}}"
+
+selected_fg = "{{colors.on_primary.default.hex}}"
+selected_bg = "{{colors.primary.default.hex}}"
+
+badge_fg = "{{colors.on_tertiary.default.hex}}"
+badge_bg = "{{colors.tertiary.default.hex}}"
+
+header_fg = "{{colors.on_primary.default.hex}}"
+header_bg = "{{colors.primary.default.hex}}"
+
+filter_fg = "{{colors.on_surface_variant.default.hex}}"
+filter_bg = "{{colors.surface_container_high.default.hex}}"
+
+filter_on_fg = "{{colors.on_primary.default.hex}}"
+filter_on_bg = "{{colors.primary.default.hex}}"
+
+filter_hot_fg = "{{colors.on_secondary.default.hex}}"
+filter_hot_bg = "{{colors.secondary.default.hex}}"
 ```
 
 ## Development
