@@ -83,6 +83,36 @@ func TestWideViewKeepsSelectedRowHighlight(t *testing.T) {
 	}
 }
 
+func TestHeadersAndFiltersUseFilledStyles(t *testing.T) {
+	model := viewTestModel()
+	model.width = 100
+	model.height = 24
+	model.allResults = model.results
+	model.focus = focusFilters
+	model.theme = theme.Theme{
+		Color:         true,
+		HeaderCode:    "30;47",
+		TableCode:     "37;44",
+		FilterCode:    "37;40",
+		FilterOnCode:  "30;46",
+		FilterHotCode: "30;45",
+	}
+
+	header := model.renderHeader()
+	filterBar := model.renderFilterBar()
+	list := model.renderList(80, 8)
+
+	if !strings.HasPrefix(header, "\x1b[30;47m") {
+		t.Fatalf("header does not use filled header style: %q", header)
+	}
+	if !strings.Contains(filterBar, "\x1b[30;45m src:all ") {
+		t.Fatalf("focused filter chip missing filled style: %q", filterBar)
+	}
+	if !strings.HasPrefix(list, "\x1b[37;44m") {
+		t.Fatalf("list header does not use table style: %q", list)
+	}
+}
+
 func TestDetailLinesUseSectionsAndDashEmptyValues(t *testing.T) {
 	model := viewTestModel()
 	pkg := model.results[0].Package

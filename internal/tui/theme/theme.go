@@ -19,6 +19,11 @@ type Theme struct {
 	FocusCode     string
 	SelectedCode  string
 	BadgeCode     string
+	HeaderCode    string
+	TableCode     string
+	FilterCode    string
+	FilterOnCode  string
+	FilterHotCode string
 	Separator     string
 	PanelDivider  string
 	StatusDivider string
@@ -61,6 +66,15 @@ func (t Theme) Focus(s string) string       { return t.wrap(t.FocusCode, s) }
 func (t Theme) Reverse(s string) string     { return t.Selected(s) }
 func (t Theme) Selected(s string) string    { return t.wrap(t.SelectedCode, s) }
 func (t Theme) SourceBadge(s string) string { return t.wrap(t.BadgeCode, s) }
+func (t Theme) Header(s string) string      { return t.wrap(t.HeaderCode, s) }
+func (t Theme) TableHeader(s string) string { return t.wrap(t.TableCode, s) }
+func (t Theme) FilterChip(s string) string  { return t.wrap(t.FilterCode, s) }
+func (t Theme) FilterActive(s string) string {
+	return t.wrap(t.FilterOnCode, s)
+}
+func (t Theme) FilterFocused(s string) string {
+	return t.wrap(t.FilterHotCode, s)
+}
 
 func (t Theme) Status(kind, s string) string {
 	switch kind {
@@ -102,6 +116,11 @@ var themes = map[string]Theme{
 		FocusCode:     "1;38;5;51",
 		SelectedCode:  "7;38;5;51",
 		BadgeCode:     "1;38;5;39",
+		HeaderCode:    "1;38;5;16;48;5;45",
+		TableCode:     "1;38;5;231;48;5;24",
+		FilterCode:    "38;5;250;48;5;238",
+		FilterOnCode:  "1;38;5;16;48;5;45",
+		FilterHotCode: "1;38;5;16;48;5;51",
 		Separator:     "─",
 		PanelDivider:  "│",
 		StatusDivider: "╾",
@@ -126,6 +145,11 @@ var themes = map[string]Theme{
 		FocusCode:     "1;38;5;159",
 		SelectedCode:  "7;38;5;159",
 		BadgeCode:     "1;38;5;111",
+		HeaderCode:    "1;38;5;16;48;5;111",
+		TableCode:     "1;38;5;231;48;5;24",
+		FilterCode:    "38;5;250;48;5;238",
+		FilterOnCode:  "1;38;5;16;48;5;111",
+		FilterHotCode: "1;38;5;16;48;5;159",
 		Separator:     "─",
 		PanelDivider:  "│",
 		StatusDivider: "╾",
@@ -142,6 +166,11 @@ var themes = map[string]Theme{
 		FocusCode:     "1;38;5;24",
 		SelectedCode:  "7;38;5;24",
 		BadgeCode:     "1;38;5;25",
+		HeaderCode:    "1;38;5;231;48;5;25",
+		TableCode:     "1;38;5;231;48;5;67",
+		FilterCode:    "38;5;236;48;5;254",
+		FilterOnCode:  "1;38;5;231;48;5;25",
+		FilterHotCode: "1;38;5;231;48;5;24",
 		Separator:     "─",
 		PanelDivider:  "│",
 		StatusDivider: "╾",
@@ -158,6 +187,11 @@ var themes = map[string]Theme{
 		FocusCode:     "1;36",
 		SelectedCode:  "7;1;37",
 		BadgeCode:     "1;35",
+		HeaderCode:    "1;30;47",
+		TableCode:     "1;37;44",
+		FilterCode:    "37;40",
+		FilterOnCode:  "1;30;46",
+		FilterHotCode: "1;30;47",
 		Separator:     "=",
 		PanelDivider:  "|",
 		StatusDivider: "=",
