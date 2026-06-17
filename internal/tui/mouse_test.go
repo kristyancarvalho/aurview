@@ -41,7 +41,7 @@ func TestMouseClickPackageRowSelectsResult(t *testing.T) {
 
 	updated, _ := model.Update(tea.MouseMsg{
 		X:      2,
-		Y:      4,
+		Y:      5,
 		Action: tea.MouseActionPress,
 		Button: tea.MouseButtonLeft,
 	})
@@ -98,7 +98,7 @@ func TestMouseHitAreaNarrowLayout(t *testing.T) {
 	if got := model.hitArea(2, 1).kind; got != hitSearch {
 		t.Fatalf("search hit = %v", got)
 	}
-	if got := model.hitArea(2, 4); got.kind != hitListRow || got.index != 1 {
+	if got := model.hitArea(2, 5); got.kind != hitListRow || got.index != 1 {
 		t.Fatalf("list row hit = %#v", got)
 	}
 	if got := model.hitArea(2, 20).kind; got != hitDetail {

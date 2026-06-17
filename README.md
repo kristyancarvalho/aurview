@@ -11,6 +11,7 @@ It does not install, download, clone, build, update, remove or execute packages.
 - Read-only AUR RPC search
 - Local relevance ranking
 - Package details for versions, votes, popularity, dependencies, licenses and URLs
+- Interactive filters for source, maintainer, out-of-date status, votes, popularity, recency and match mode
 - Keyboard-first navigation with optional mouse support
 - Search history and clipboard copy
 - Configurable AUR-compatible metadata sources
@@ -72,6 +73,7 @@ aurview --version
 ```
 
 Type a package name or keyword, select a result, then press `Enter` to copy the package name.
+Use the compact filter bar to narrow results without running a new search.
 
 ## Keybindings
 
@@ -84,6 +86,10 @@ Type a package name or keyword, select a result, then press `Enter` to copy the 
 | `Ctrl+d` / `Ctrl+u` | Half page down or up |
 | `Ctrl+f` / `Ctrl+b` | Page down or up |
 | `n` / `N` | Next or previous search history entry |
+| `f` / `Tab` | Focus filters or move to the next filter |
+| `Shift+Tab` / `h` / `l` | Move between filters when the filter bar is focused |
+| `Space` / `Enter` | Cycle the focused filter |
+| `r` | Reset filters when the filter bar is focused |
 | `Enter` | Copy selected package name |
 | `Esc` | Blur search or close overlay |
 | `?` | Toggle help |

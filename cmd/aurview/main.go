@@ -2,23 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
 	"github.com/kristyancarvalho/aurview/internal/app"
-)
-
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+	"github.com/kristyancarvalho/aurview/internal/version"
 )
 
 func main() {
 	args := os.Args[1:]
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "version") {
-		fmt.Fprintf(os.Stdout, "aurview %s\ncommit: %s\ndate: %s\n", version, commit, date)
+		_, _ = os.Stdout.WriteString(version.Current().String("aurview"))
 		return
 	}
 

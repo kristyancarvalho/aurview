@@ -102,8 +102,10 @@ jobs:
           mkdir -p dist
           package_dir="dist/aurview_${VERSION}_${{ matrix.archive_suffix }}"
           mkdir -p "$package_dir"
+          commit="$(git rev-parse --short "$GITHUB_SHA")"
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          go build -trimpath -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${GITHUB_SHA} -X main.date=${build_date}" -o "$package_dir/aurview" ./cmd/aurview
+          version_pkg="github.com/kristyancarvalho/aurview/internal/version"
+          go build -trimpath -ldflags="-s -w -X ${version_pkg}.Version=${VERSION} -X ${version_pkg}.Commit=${commit} -X ${version_pkg}.Date=${build_date}" -o "$package_dir/aurview" ./cmd/aurview
           cp LICENSE README.md "$package_dir/"
           tar -C dist -czf "dist/aurview_${VERSION}_${{ matrix.archive_suffix }}.tar.gz" "aurview_${VERSION}_${{ matrix.archive_suffix }}"
           rm -rf "$package_dir"

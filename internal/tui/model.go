@@ -11,6 +11,7 @@ import (
 
 	"github.com/kristyancarvalho/aurview/internal/aur"
 	"github.com/kristyancarvalho/aurview/internal/clipboard"
+	"github.com/kristyancarvalho/aurview/internal/filter"
 	"github.com/kristyancarvalho/aurview/internal/history"
 	"github.com/kristyancarvalho/aurview/internal/ranking"
 	"github.com/kristyancarvalho/aurview/internal/tui/components"
@@ -37,6 +38,7 @@ type focusArea int
 
 const (
 	focusSearch focusArea = iota
+	focusFilters
 	focusList
 	focusDetail
 )
@@ -60,9 +62,12 @@ type Model struct {
 	searchError string
 	lastQuery   string
 
-	results  []ranking.RankedPackage
-	selected int
-	scroll   int
+	allResults  []ranking.RankedPackage
+	results     []ranking.RankedPackage
+	filterState filter.State
+	filterIndex int
+	selected    int
+	scroll      int
 
 	detailCache   map[string]aur.Package
 	detailLoading bool
@@ -122,6 +127,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		query := strings.TrimSpace(msg.query)
 		if query == "" {
 			m.loading = false
+			m.allResults = nil
 			m.results = nil
 			m.searchError = ""
 			m.lastQuery = ""
@@ -144,17 +150,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.history.Add(msg.query)
-		m.results = m.scorer.Rank(msg.query, msg.packages)
+		m.allResults = m.scorer.Rank(msg.query, msg.packages)
 		m.selected = 0
 		m.scroll = 0
 		m.detailScroll = 0
 		m.searchError = ""
+		m.applyFilters()
 		if len(m.results) == 0 {
-			m.status = "no packages matched " + msg.query
+			if len(m.allResults) > 0 && m.filterState.Active() {
+				m.status = fmt.Sprintf("filters hide all %d packages", len(m.allResults))
+			} else {
+				m.status = "no packages matched " + msg.query
+			}
 			m.statusKind = "warn"
 			return m, nil
 		}
-		m.status = fmt.Sprintf("%d packages ranked for %q", len(m.results), msg.query)
+		m.setFilteredStatus(msg.query)
 		m.statusKind = "ok"
 		return m, m.fetchSelectedDetail()
 	case detailResultMsg:
@@ -204,6 +215,11 @@ func (m Model) updateMouse(msg tea.MouseMsg) (Model, tea.Cmd) {
 			m.focus = focusSearch
 			m.status = "search focused"
 			m.statusKind = "info"
+		case hitFilter:
+			m.focus = focusFilters
+			m.ensureFilterIndex()
+			m.status = "filter bar focused"
+			m.statusKind = "info"
 		case hitListRow:
 			m.focus = focusList
 			m.selected = area.index
@@ -242,6 +258,8 @@ func (m Model) updateMouseWheel(area hitResult, delta int) (Model, tea.Cmd) {
 		return m, cmd
 	case hitSearch:
 		m.focus = focusSearch
+	case hitFilter:
+		m.focus = focusFilters
 	}
 	return m, nil
 }
@@ -270,14 +288,55 @@ func (m Model) updateKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.help = !m.help
 	case keymap.ActionSearch:
 		m.focus = focusSearch
+	case keymap.ActionFilter:
+		m.focus = focusFilters
+		m.ensureFilterIndex()
+		m.status = "filter bar focused"
+		m.statusKind = "info"
 	case keymap.ActionBlur:
 		if m.focus == focusSearch {
 			m.focus = focusList
+		} else if m.focus == focusFilters {
+			m.focus = focusList
 		}
+	case keymap.ActionNextFilter:
+		if m.focus != focusFilters {
+			m.focus = focusFilters
+			m.ensureFilterIndex()
+			return m, nil
+		}
+		m.moveFilter(1)
+	case keymap.ActionPrevFilter:
+		if m.focus != focusFilters {
+			m.focus = focusFilters
+			m.ensureFilterIndex()
+			return m, nil
+		}
+		m.moveFilter(-1)
+	case keymap.ActionToggleFilter:
+		if m.focus != focusFilters {
+			return m, nil
+		}
+		cmd := m.cycleSelectedFilter()
+		return m, cmd
+	case keymap.ActionResetFilters:
+		if m.focus != focusFilters {
+			return m, nil
+		}
+		cmd := m.resetFilters()
+		return m, cmd
 	case keymap.ActionCopy:
+		if m.focus == focusFilters {
+			cmd := m.cycleSelectedFilter()
+			return m, cmd
+		}
 		cmd := m.copySelected()
 		return m, cmd
 	case keymap.ActionDown:
+		if m.focus == focusFilters {
+			m.focus = focusList
+			return m, nil
+		}
 		if m.focus == focusDetail {
 			m.moveDetail(1)
 			return m, nil
@@ -286,6 +345,10 @@ func (m Model) updateKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		cmd := m.fetchSelectedDetail()
 		return m, cmd
 	case keymap.ActionUp:
+		if m.focus == focusFilters {
+			m.focus = focusSearch
+			return m, nil
+		}
 		if m.focus == focusDetail {
 			m.moveDetail(-1)
 			return m, nil
@@ -294,12 +357,20 @@ func (m Model) updateKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		cmd := m.fetchSelectedDetail()
 		return m, cmd
 	case keymap.ActionLeft:
+		if m.focus == focusFilters {
+			m.moveFilter(-1)
+			return m, nil
+		}
 		if m.focus == focusDetail {
 			m.focus = focusList
 		} else {
 			m.focus = focusSearch
 		}
 	case keymap.ActionRight:
+		if m.focus == focusFilters {
+			m.moveFilter(1)
+			return m, nil
+		}
 		if m.focus == focusSearch {
 			m.focus = focusList
 		} else {
@@ -451,9 +522,9 @@ func (m Model) listHeight() int {
 		return 10
 	}
 	if m.width >= 110 {
-		return max(1, m.height-5)
+		return max(1, m.height-6)
 	}
-	return max(1, (m.height-6)*2/3)
+	return max(1, (m.height-7)*2/3)
 }
 
 func (m Model) detailHeight() int {
@@ -461,9 +532,9 @@ func (m Model) detailHeight() int {
 		return 10
 	}
 	if m.width >= 110 {
-		return max(1, m.height-5)
+		return max(1, m.height-6)
 	}
-	return max(1, m.height-m.listHeight()-6)
+	return max(1, m.height-m.listHeight()-7)
 }
 
 func (m Model) selectedName() string {
@@ -615,6 +686,7 @@ type hitKind int
 const (
 	hitNone hitKind = iota
 	hitSearch
+	hitFilter
 	hitList
 	hitListRow
 	hitDetail
@@ -629,21 +701,24 @@ func (m Model) hitArea(x, y int) hitResult {
 	if y == 1 {
 		return hitResult{kind: hitSearch}
 	}
+	if y == 2 {
+		return hitResult{kind: hitFilter}
+	}
 	if m.width >= 110 {
 		leftWidth := max(62, m.width*58/100)
-		if y >= 2 {
+		if y >= 3 {
 			if x <= leftWidth {
-				return m.hitList(y, 2)
+				return m.hitList(y, 3)
 			}
 			return hitResult{kind: hitDetail}
 		}
 		return hitResult{kind: hitNone}
 	}
-	listHeight := max(3, (m.height-5)*2/3)
-	if y >= 2 && y <= 2+listHeight {
-		return m.hitList(y, 2)
+	listHeight := max(3, (m.height-6)*2/3)
+	if y >= 3 && y <= 3+listHeight {
+		return m.hitList(y, 3)
 	}
-	if y > 2+listHeight {
+	if y > 3+listHeight {
 		return hitResult{kind: hitDetail}
 	}
 	return hitResult{kind: hitNone}

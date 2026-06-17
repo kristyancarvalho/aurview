@@ -21,6 +21,11 @@ const (
 	ActionPageUp
 	ActionHistoryNext
 	ActionHistoryPrev
+	ActionFilter
+	ActionNextFilter
+	ActionPrevFilter
+	ActionToggleFilter
+	ActionResetFilters
 )
 
 type Resolver struct {
@@ -49,6 +54,8 @@ func (r *Resolver) Resolve(key string, editing bool) Action {
 			return ActionHistoryNext
 		case "enter":
 			return ActionCopy
+		case "tab":
+			return ActionFilter
 		default:
 			return ActionNone
 		}
@@ -61,6 +68,16 @@ func (r *Resolver) Resolve(key string, editing bool) Action {
 		return ActionHelp
 	case "/":
 		return ActionSearch
+	case "f":
+		return ActionFilter
+	case "tab":
+		return ActionNextFilter
+	case "shift+tab", "backtab":
+		return ActionPrevFilter
+	case " ":
+		return ActionToggleFilter
+	case "r":
+		return ActionResetFilters
 	case "esc":
 		return ActionBlur
 	case "enter":
