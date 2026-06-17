@@ -16,6 +16,7 @@ Release maintenance update focused on release readiness, AUR packaging and simpl
 - Simplified the README around installation, usage, keybindings, configuration and release flow
 - Release workflow now validates release tags against `main`
 - Release artifact actions were updated
+- GitHub Release publication now checks out repository history before verifying tags
 - AUR package metadata now targets `v0.4.1`
 
 ### Fixed

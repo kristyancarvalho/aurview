@@ -19,6 +19,7 @@ for tagged releases.
 - Simplified `README.md` around practical installation, usage, configuration and release information
 - Validated release tags against `main`, the stable release branch
 - Updated release artifact upload/download actions
+- Checked out repository history before GitHub Release publication
 - Kept staging branches local-only and `docs/` focused on release notes
 - Updated AUR package metadata for the `v0.4.1` release
 
