@@ -33,8 +33,10 @@ func FromConfig(cfg config.Config) (*MultiClient, error) {
 	out := make([]Source, 0, len(sourceConfigs))
 	for _, source := range sourceConfigs {
 		switch source.Type {
-		case "aur-rpc":
+		case config.SourceTypeAURRPC:
 			out = append(out, NewAURRPCSource(source.Name, source.URL))
+		case config.SourceTypePacmanSyncDB:
+			out = append(out, NewPacmanSyncDBSource(source.Name, source.Repo, source.DBPath))
 		default:
 			return nil, fmt.Errorf("unsupported source type %q", source.Type)
 		}
@@ -74,4 +76,12 @@ func (m *MultiClient) Info(ctx context.Context, sourceName, name string) ([]aur.
 
 func (m *MultiClient) SourceCount() int {
 	return len(m.sources)
+}
+
+func clonePackages(pkgs []aur.Package) []aur.Package {
+	out := make([]aur.Package, len(pkgs))
+	for i, pkg := range pkgs {
+		out[i] = pkg.Clone()
+	}
+	return out
 }
