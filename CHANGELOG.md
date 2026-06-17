@@ -7,6 +7,10 @@ for tagged releases.
 
 ## [Unreleased]
 
+### Changed
+
+- Keep `docs/` reserved for release notes and keep staging branches local-only.
+
 ## [0.4.0] - 2026-06-16
 
 ### Added
