@@ -2,9 +2,13 @@
 
 BIN := aurview
 AUR_DIR := packaging/aur
+VERSION ?= dev
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
 
 build:
-	go build -o bin/$(BIN) ./cmd/aurview
+	go build -trimpath -ldflags="$(LDFLAGS)" -o bin/$(BIN) ./cmd/aurview
 
 run:
 	go run ./cmd/aurview $(ARGS)

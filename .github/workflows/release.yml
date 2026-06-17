@@ -34,13 +34,13 @@ jobs:
           fi
           echo "version=${tag#v}" >>"$GITHUB_OUTPUT"
 
-      - name: Ensure tag commit is on dev
+      - name: Ensure tag commit is on main
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin dev
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/dev; then
-            echo "Tag ${GITHUB_REF_NAME} is not reachable from origin/dev" >&2
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag ${GITHUB_REF_NAME} is not reachable from origin/main" >&2
             exit 1
           fi
 
@@ -98,10 +98,12 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
+          set -euo pipefail
           mkdir -p dist
           package_dir="dist/aurview_${VERSION}_${{ matrix.archive_suffix }}"
           mkdir -p "$package_dir"
-          go build -trimpath -ldflags="-s -w" -o "$package_dir/aurview" ./cmd/aurview
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -trimpath -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${GITHUB_SHA} -X main.date=${build_date}" -o "$package_dir/aurview" ./cmd/aurview
           cp LICENSE README.md "$package_dir/"
           tar -C dist -czf "dist/aurview_${VERSION}_${{ matrix.archive_suffix }}.tar.gz" "aurview_${VERSION}_${{ matrix.archive_suffix }}"
           rm -rf "$package_dir"
@@ -115,7 +117,7 @@ jobs:
           ./scripts/release/source-archive.sh "$VERSION" "dist/aurview_${VERSION}_source.tar.gz"
 
       - name: Upload release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurview-${{ matrix.archive_suffix }}
           path: dist/aurview_${{ needs.validate.outputs.version }}_${{ matrix.archive_suffix }}.tar.gz
@@ -123,7 +125,7 @@ jobs:
 
       - name: Upload source archive
         if: matrix.goarch == 'amd64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurview-source
           path: dist/aurview_${{ needs.validate.outputs.version }}_source.tar.gz
@@ -136,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -151,7 +153,7 @@ jobs:
           sha256sum *.tar.gz > "aurview_${VERSION}_SHA256SUMS"
 
       - name: Upload checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aurview-checksums
           path: dist/*SHA256SUMS
@@ -164,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true

@@ -1,5 +1,5 @@
 pkgname=aurview
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc="Read-only AUR/package metadata browser TUI"
 arch=("x86_64" "aarch64")
@@ -8,12 +8,12 @@ license=("MIT")
 makedepends=("go")
 options=("!debug")
 source=("${pkgname}_${pkgver}_source.tar.gz::https://github.com/kristyancarvalho/aurview/releases/download/v${pkgver}/${pkgname}_${pkgver}_source.tar.gz")
-sha256sums=("0c8e891b4022c608e94db7f1509b4c92d85dcabbf4dbce4356e246dea313b4d4")
+sha256sums=("fd669bb7d769b1b92578b48182a025c1ab70fc81a44821ab95144f9c46a9a40a")
 
 build() {
   cd "${srcdir}/${pkgname}-${pkgver}"
   export CGO_ENABLED=0
-  go build -trimpath -ldflags="-s -w" -o aurview ./cmd/aurview
+  go build -trimpath -ldflags="-s -w -X main.version=${pkgver}" -o aurview ./cmd/aurview
 }
 
 package() {
