@@ -45,6 +45,10 @@ default_sources = ["aur", "custom"]
 [ui]
 theme = "mono"
 
+[theme]
+accent = "#112233"
+selected_bg = "#445566"
+
 [[sources]]
 name = "aur"
 type = "aur-rpc"
@@ -64,6 +68,9 @@ url = "https://example.com/rpc"
 	}
 	if cfg.UI.Theme != "mono" {
 		t.Fatalf("theme = %q, want mono", cfg.UI.Theme)
+	}
+	if cfg.Theme.Accent != "#112233" || cfg.Theme.SelectedBG != "#445566" {
+		t.Fatalf("theme colors = %#v, want parsed custom colors", cfg.Theme)
 	}
 	if got := cfg.EnabledSources(); len(got) != 1 || got[0].Name != "aur" {
 		t.Fatalf("EnabledSources() = %#v, want only aur", got)
