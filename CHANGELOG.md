@@ -7,6 +7,23 @@ for tagged releases.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-17
+
+### Added
+
+- Interactive package filters for source, maintainer state, out-of-date state, votes, popularity, recency and match mode
+- Compact filter bar with keyboard navigation and reset support
+
+### Changed
+
+- Styled top headers, table headers and filter chips with compact htop-like filled backgrounds
+- Moved build metadata to `internal/version` so release builds can embed version, commit and date consistently
+- Updated AUR packaging metadata for the `v0.4.2` release
+
+### Fixed
+
+- Released binaries now embed real commit and build date metadata instead of `commit: none` and `date: unknown`
+
 ## [0.4.1] - 2026-06-17
 
 ### Added
