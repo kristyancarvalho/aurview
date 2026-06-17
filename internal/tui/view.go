@@ -25,12 +25,14 @@ func (m Model) View() string {
 	b.WriteByte('\n')
 	b.WriteString(m.renderSearch())
 	b.WriteByte('\n')
+	b.WriteString(m.renderFilterBar())
+	b.WriteByte('\n')
 
 	if m.width >= 110 {
 		leftWidth := max(62, m.width*58/100)
 		rightWidth := m.width - leftWidth - 1
-		left := strings.Split(m.renderList(leftWidth, m.height-4), "\n")
-		right := strings.Split(m.renderDetail(rightWidth, m.height-4), "\n")
+		left := strings.Split(m.renderList(leftWidth, m.height-5), "\n")
+		right := strings.Split(m.renderDetail(rightWidth, m.height-5), "\n")
 		rows := max(len(left), len(right))
 		for i := 0; i < rows; i++ {
 			l, r := "", ""
@@ -48,12 +50,12 @@ func (m Model) View() string {
 			}
 		}
 	} else {
-		listHeight := max(3, (m.height-5)*2/3)
+		listHeight := max(3, (m.height-6)*2/3)
 		b.WriteString(m.renderList(m.width, listHeight))
 		b.WriteByte('\n')
 		b.WriteString(m.theme.Muted(components.Repeat(m.theme.Separator, m.width)))
 		b.WriteByte('\n')
-		b.WriteString(m.renderDetail(m.width, m.height-listHeight-6))
+		b.WriteString(m.renderDetail(m.width, m.height-listHeight-7))
 	}
 
 	b.WriteByte('\n')
@@ -63,18 +65,24 @@ func (m Model) View() string {
 
 func (m Model) renderHeader() string {
 	width := max(m.width, 80)
-	count := fmt.Sprintf("%d pkgs", len(m.results))
+	count := fmt.Sprintf("%d/%d pkgs", len(m.results), len(m.allResults))
 	focus := "search"
-	if m.focus == focusList {
+	if m.focus == focusFilters {
+		focus = "filters"
+	} else if m.focus == focusList {
 		focus = "list"
-	}
-	if m.focus == focusDetail {
+	} else if m.focus == focusDetail {
 		focus = "detail"
 	}
-	left := m.theme.Focus("AURVIEW") + m.theme.Muted(" // read-only rpc")
-	right := m.theme.Muted(count + " // " + focus + " // ? help")
+	active := ""
+	if n := m.filterState.ActiveCount(); n > 0 {
+		active = fmt.Sprintf(" // %d filters", n)
+	}
+	left := " AURVIEW // read-only rpc"
+	right := count + active + " // " + focus + " // ? help "
 	spacer := components.Repeat(" ", max(1, width-components.RuneLen("AURVIEW // read-only rpc")-components.RuneLen(count+" // "+focus+" // ? help")))
-	return left + spacer + right
+	line := left + spacer + right
+	return m.theme.Header(components.PadRight(components.Truncate(line, width), width))
 }
 
 func (m Model) renderSearch() string {
@@ -99,10 +107,32 @@ func (m Model) renderSearch() string {
 	return components.Truncate(line, width)
 }
 
+func (m Model) renderFilterBar() string {
+	width := max(m.width, 80)
+	prefix := " filters "
+	if m.focus == focusFilters {
+		prefix = ">filters "
+	}
+	parts := []string{m.theme.TableHeader(prefix)}
+	for _, chip := range m.filterChips() {
+		text := " " + chip.Label + " "
+		switch {
+		case chip.Focused:
+			parts = append(parts, m.theme.FilterFocused(text))
+		case chip.Active:
+			parts = append(parts, m.theme.FilterActive(text))
+		default:
+			parts = append(parts, m.theme.FilterChip(text))
+		}
+	}
+	line := strings.Join(parts, " ")
+	return components.PadRight(components.Truncate(line, width), width)
+}
+
 func (m Model) renderList(width, height int) string {
 	var b strings.Builder
 	layout := newListLayout(width)
-	b.WriteString(m.theme.Muted(layout.header()))
+	b.WriteString(m.theme.TableHeader(layout.header()))
 
 	if m.loading && len(m.results) == 0 {
 		b.WriteByte('\n')
@@ -121,7 +151,11 @@ func (m Model) renderList(width, height int) string {
 	}
 	if len(m.results) == 0 {
 		b.WriteByte('\n')
-		b.WriteString(m.theme.Muted("  no results"))
+		if len(m.allResults) > 0 && m.filterState.Active() {
+			b.WriteString(m.theme.Muted("  no results after filters"))
+		} else {
+			b.WriteString(m.theme.Muted("  no results"))
+		}
 		return b.String()
 	}
 
@@ -184,7 +218,7 @@ func (m Model) renderDetail(width, height int) string {
 	var b strings.Builder
 	pkg, ok := m.selectedPackage()
 	if !ok {
-		return m.theme.Muted(components.PadRight("detail // no package selected", width))
+		return m.theme.TableHeader(components.PadRight("detail // no package selected", width))
 	}
 	title := "detail // " + pkg.Name
 	if m.detailLoading {
@@ -192,9 +226,9 @@ func (m Model) renderDetail(width, height int) string {
 	}
 	title = components.PadRight(components.Truncate(title, width), width)
 	if m.focus == focusDetail {
-		title = m.theme.Focus(title)
+		title = m.theme.Header(title)
 	} else {
-		title = m.theme.Muted(title)
+		title = m.theme.TableHeader(title)
 	}
 	b.WriteString(title)
 
@@ -279,6 +313,9 @@ func (m Model) renderHelp() string {
 		"ctrl+d/u   half page",
 		"ctrl+f/b   page",
 		"n / N      history newer / older",
+		"f / tab    focus filters / next filter",
+		"space      cycle focused filter",
+		"r          reset filters when filters are focused",
 		"enter      copy selected package name",
 		"mouse      click rows/search, wheel list/detail",
 		"esc        blur or close",

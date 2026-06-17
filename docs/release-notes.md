@@ -1,5 +1,40 @@
 # Release Notes
 
+## v0.4.2 - 2026-06-17
+
+### Summary
+
+Patch release focused on trustworthy release metadata, interactive result filters and clearer TUI visual hierarchy.
+
+### Added
+
+- Search filters for source, maintained/orphaned packages, out-of-date flags, minimum votes, minimum popularity, recently updated packages and match mode
+- Compact keyboard-friendly filter bar with reset support
+
+### Changed
+
+- Top headers, table headers and filter chips now use compact htop-like filled backgrounds
+- Build metadata now has a single `internal/version` source and release builds override it with `-ldflags`
+- AUR package metadata now targets `v0.4.2`
+
+### Fixed
+
+- Release artifacts no longer show `commit: none` or `date: unknown`
+
+### Known Limitations
+
+- Installed/local package status is not available because aurview does not call package managers at runtime.
+
+### Validation Notes
+
+- `gofmt -w .`
+- `go test ./...`
+- `go vet ./...`
+- `go build ./...`
+- Release-style `go build -ldflags ...` metadata check
+- `makepkg --printsrcinfo`
+- `makepkg --verifysource`
+
 ## v0.4.1 - 2026-06-17
 
 ### Summary
