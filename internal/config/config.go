@@ -18,12 +18,35 @@ import (
 type Config struct {
 	DefaultSources []string       `toml:"default_sources"`
 	UI             UIConfig       `toml:"ui"`
+	Theme          ThemeConfig    `toml:"theme"`
 	Sources        []SourceConfig `toml:"sources"`
 	Path           string         `toml:"-"`
 }
 
 type UIConfig struct {
 	Theme string `toml:"theme"`
+}
+
+type ThemeConfig struct {
+	Accent      string `toml:"accent"`
+	Good        string `toml:"good"`
+	Warn        string `toml:"warn"`
+	Danger      string `toml:"danger"`
+	Muted       string `toml:"muted"`
+	Dim         string `toml:"dim"`
+	Focus       string `toml:"focus"`
+	SelectedFG  string `toml:"selected_fg"`
+	SelectedBG  string `toml:"selected_bg"`
+	BadgeFG     string `toml:"badge_fg"`
+	BadgeBG     string `toml:"badge_bg"`
+	HeaderFG    string `toml:"header_fg"`
+	HeaderBG    string `toml:"header_bg"`
+	FilterFG    string `toml:"filter_fg"`
+	FilterBG    string `toml:"filter_bg"`
+	FilterOnFG  string `toml:"filter_on_fg"`
+	FilterOnBG  string `toml:"filter_on_bg"`
+	FilterHotFG string `toml:"filter_hot_fg"`
+	FilterHotBG string `toml:"filter_hot_bg"`
 }
 
 type SourceConfig struct {

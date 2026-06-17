@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
+
+const MatugenName = "matugen"
 
 type Theme struct {
 	Name          string
@@ -29,31 +32,89 @@ type Theme struct {
 	StatusDivider string
 }
 
+type ColorConfig struct {
+	Accent      string
+	Good        string
+	Warn        string
+	Danger      string
+	Muted       string
+	Dim         string
+	Focus       string
+	SelectedFG  string
+	SelectedBG  string
+	BadgeFG     string
+	BadgeBG     string
+	HeaderFG    string
+	HeaderBG    string
+	FilterFG    string
+	FilterBG    string
+	FilterOnFG  string
+	FilterOnBG  string
+	FilterHotFG string
+	FilterHotBG string
+}
+
 func Detect(name string) (Theme, error) {
-	t, ok := Named(name)
+	return DetectWithColors(name, ColorConfig{})
+}
+
+func DetectWithColors(name string, colors ColorConfig) (Theme, error) {
+	t, ok := namedWithColors(name, colors)
 	if !ok {
 		return Theme{}, fmt.Errorf("unknown theme %q; available themes: %s", name, strings.Join(Names(), ", "))
 	}
+	return detectTerminalColor(t), nil
+}
+
+func detectTerminalColor(t Theme) Theme {
 	term := os.Getenv("TERM")
 	t.Color = t.Color && os.Getenv("NO_COLOR") == "" && term != "" && term != "dumb"
-	return t, nil
+	return t
 }
 
 func Named(name string) (Theme, bool) {
+	return namedWithColors(name, ColorConfig{})
+}
+
+func namedWithColors(name string, colors ColorConfig) (Theme, bool) {
 	if strings.TrimSpace(name) == "" {
 		name = "arch"
+	}
+	if strings.EqualFold(strings.TrimSpace(name), MatugenName) {
+		return Matugen(colors), true
 	}
 	t, ok := themes[strings.ToLower(name)]
 	return t, ok
 }
 
 func Names() []string {
-	names := make([]string, 0, len(themes))
+	names := make([]string, 0, len(themes)+1)
 	for name := range themes {
 		names = append(names, name)
 	}
+	names = append(names, MatugenName)
 	sort.Strings(names)
 	return names
+}
+
+func Matugen(colors ColorConfig) Theme {
+	base, _ := themes["arch"]
+	base.Name = MatugenName
+	base.AccentCode = colorCode(colors.Accent, base.AccentCode)
+	base.GoodCode = colorCode(colors.Good, base.GoodCode)
+	base.WarnCode = colorCode(colors.Warn, base.WarnCode)
+	base.DangerCode = colorCode(colors.Danger, base.DangerCode)
+	base.MutedCode = colorCode(colors.Muted, base.MutedCode)
+	base.DimCode = dimColorCode(colors.Dim, base.DimCode)
+	base.FocusCode = boldColorCode(colors.Focus, base.FocusCode)
+	base.SelectedCode = colorPairCode(colors.SelectedFG, colors.SelectedBG, base.SelectedCode)
+	base.BadgeCode = colorPairCode(colors.BadgeFG, colors.BadgeBG, base.BadgeCode)
+	base.HeaderCode = colorPairCode(colors.HeaderFG, colors.HeaderBG, base.HeaderCode)
+	base.TableCode = colorPairCode(colors.HeaderFG, colors.HeaderBG, base.TableCode)
+	base.FilterCode = colorPairCode(colors.FilterFG, colors.FilterBG, base.FilterCode)
+	base.FilterOnCode = colorPairCode(colors.FilterOnFG, colors.FilterOnBG, base.FilterOnCode)
+	base.FilterHotCode = colorPairCode(colors.FilterHotFG, colors.FilterHotBG, base.FilterHotCode)
+	return base
 }
 
 func (t Theme) Accent(s string) string      { return t.wrap(t.AccentCode, s) }
@@ -101,6 +162,81 @@ func (t Theme) wrap(code, s string) string {
 	b.WriteString(s)
 	b.WriteString("\x1b[0m")
 	return b.String()
+}
+
+type rgb struct {
+	r uint8
+	g uint8
+	b uint8
+}
+
+func colorCode(value, fallback string) string {
+	color, ok := parseHexColor(value)
+	if !ok {
+		return fallback
+	}
+	return fgCode(color)
+}
+
+func boldColorCode(value, fallback string) string {
+	color, ok := parseHexColor(value)
+	if !ok {
+		return fallback
+	}
+	return "1;" + fgCode(color)
+}
+
+func dimColorCode(value, fallback string) string {
+	color, ok := parseHexColor(value)
+	if !ok {
+		return fallback
+	}
+	return "2;" + fgCode(color)
+}
+
+func colorPairCode(fg, bg, fallback string) string {
+	foreground, fgOK := parseHexColor(fg)
+	background, bgOK := parseHexColor(bg)
+	if !fgOK || !bgOK {
+		return fallback
+	}
+	return fgCode(foreground) + ";" + bgCode(background)
+}
+
+func fgCode(color rgb) string {
+	return fmt.Sprintf("38;2;%d;%d;%d", color.r, color.g, color.b)
+}
+
+func bgCode(color rgb) string {
+	return fmt.Sprintf("48;2;%d;%d;%d", color.r, color.g, color.b)
+}
+
+func parseHexColor(value string) (rgb, bool) {
+	value = strings.TrimSpace(value)
+	if len(value) != 7 || value[0] != '#' {
+		return rgb{}, false
+	}
+	r, ok := parseHexByte(value[1:3])
+	if !ok {
+		return rgb{}, false
+	}
+	g, ok := parseHexByte(value[3:5])
+	if !ok {
+		return rgb{}, false
+	}
+	b, ok := parseHexByte(value[5:7])
+	if !ok {
+		return rgb{}, false
+	}
+	return rgb{r: r, g: g, b: b}, true
+}
+
+func parseHexByte(value string) (uint8, bool) {
+	parsed, err := strconv.ParseUint(value, 16, 8)
+	if err != nil {
+		return 0, false
+	}
+	return uint8(parsed), true
 }
 
 var themes = map[string]Theme{
