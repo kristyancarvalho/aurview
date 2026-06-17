@@ -15,8 +15,13 @@ func TestResolverVimMotions(t *testing.T) {
 		{key: "ctrl+d", want: ActionHalfDown},
 		{key: "G", want: ActionBottom},
 		{key: "?", want: ActionHelp},
+		{key: "f", want: ActionFilter},
+		{key: "tab", want: ActionNextFilter},
+		{key: " ", want: ActionToggleFilter},
+		{key: "r", want: ActionResetFilters},
 		{key: "q", want: ActionQuit},
 		{key: "esc", editing: true, want: ActionBlur},
+		{key: "tab", editing: true, want: ActionFilter},
 		{key: "j", editing: true, want: ActionNone},
 	}
 
