@@ -206,8 +206,8 @@ go build ./cmd/aurview
 ```
 
 Contributor-facing project notes live in tracked repository documentation such as
-[`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/`](docs/). Local scratch notes,
-including Codex planning files, are intentionally not versioned.
+[`CONTRIBUTING.md`](CONTRIBUTING.md). Local scratch notes, including Codex
+planning files, are intentionally not versioned.
 
 ## Project Status
 
@@ -220,11 +220,13 @@ aurview is an early MVP. The current focus is a polished read-only discovery wor
 - `v0.4.0`: Themes and documentation.
 - `v1.0.0`: Stable read-only AUR browser.
 
-Release preparation lives in [`docs/release-checklist.md`](docs/release-checklist.md).
+Release history is tracked in [`CHANGELOG.md`](CHANGELOG.md) and GitHub
+Releases.
 
 ## Contributing
 
-Contributions should start from `dev`, use focused branches, and keep aurview read-only.
+Contributions should start from `dev`, use local-only staging branches, and keep
+aurview read-only.
 
 Before opening a pull request, run:
 
