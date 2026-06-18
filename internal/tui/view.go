@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/kristyancarvalho/aurview/internal/aur"
+	"github.com/kristyancarvalho/aurview/internal/filter"
 	"github.com/kristyancarvalho/aurview/internal/platform"
 	"github.com/kristyancarvalho/aurview/internal/ranking"
 	"github.com/kristyancarvalho/aurview/internal/tui/components"
@@ -125,6 +126,9 @@ func (m Model) renderFilterBar() string {
 			parts = append(parts, m.theme.FilterChip(text))
 		}
 	}
+	if parsed := filter.ParseQuery(m.input); parsed.HasDeveloper() {
+		parts = append(parts, m.theme.FilterActive(" dev:"+parsed.DeveloperLabel()+" "))
+	}
 	line := strings.Join(parts, " ")
 	return components.PadRight(components.Truncate(line, width), width)
 }
@@ -185,7 +189,7 @@ func (m Model) renderRow(index int, layout listLayout) string {
 	}
 	values := map[string]string{
 		"marker":  marker,
-		"source":  pkg.DisplaySource(),
+		"source":  filter.SourceBadgeLabel(pkg.Source),
 		"package": pkg.Name,
 		"version": pkg.Version,
 		"score":   fmt.Sprintf("%.1f", ranked.Score),
@@ -199,7 +203,9 @@ func (m Model) renderRow(index int, layout listLayout) string {
 	if index == m.selected {
 		line = layout.row(values, nil)
 	} else {
-		line = layout.row(values, m.theme.SourceBadge)
+		line = layout.row(values, func(s string) string {
+			return m.theme.SourceBadgeFor(pkg.Source, s)
+		})
 	}
 	line = components.PadRight(line, layout.width)
 	if index == m.selected {
@@ -374,7 +380,7 @@ func newListLayout(width int) listLayout {
 	width = max(1, width)
 	columns := []listColumn{
 		{key: "marker", header: "", width: 1, minWidth: 1, align: alignLeft},
-		{key: "source", header: "src", width: 6, minWidth: 3, align: alignLeft},
+		{key: "source", header: "src", width: 7, minWidth: 3, align: alignLeft},
 		{key: "package", header: "package", width: 18, minWidth: 8, grow: true, align: alignLeft},
 		{key: "version", header: "version", width: 11, minWidth: 7, grow: true, align: alignLeft, hideOrder: 5},
 		{key: "score", header: "score", width: 5, minWidth: 5, align: alignRight},
@@ -425,10 +431,12 @@ func (l listLayout) row(values map[string]string, styleSource func(string) strin
 func (l listLayout) format(values map[string]string, styleSource func(string) string) string {
 	parts := make([]string, 0, len(l.columns))
 	for _, col := range l.columns {
-		value := formatCell(values[col.key], col.width, col.align)
 		if col.key == "source" && styleSource != nil {
-			value = styleSource(value)
+			value := components.Truncate(values[col.key], col.width)
+			parts = append(parts, components.PadRight(styleSource(value), col.width))
+			continue
 		}
+		value := formatCell(values[col.key], col.width, col.align)
 		parts = append(parts, value)
 	}
 	return strings.Join(parts, " ")

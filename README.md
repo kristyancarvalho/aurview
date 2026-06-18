@@ -69,11 +69,15 @@ This installs the binary into `$GOBIN`, or `$GOPATH/bin` when `GOBIN` is not set
 aurview
 aurview paru
 aurview "wayland screenshot"
+aurview "dev:alice"
+aurview "maintainer:arch"
 aurview --version
 ```
 
 Type a package name or keyword, select a result, then press `Enter` to copy the package name.
 Use the compact filter bar to narrow results without running a new search.
+Developer query filters can be combined with package terms using `dev:<name>`,
+`developer:<name>`, `maint:<name>` or `maintainer:<name>`.
 
 ## Keybindings
 
@@ -141,11 +145,11 @@ muted = "{{colors.on_surface_variant.default.hex}}"
 dim = "{{colors.outline.default.hex}}"
 focus = "{{colors.inverse_primary.default.hex}}"
 
-selected_fg = "{{colors.on_primary.default.hex}}"
-selected_bg = "{{colors.primary.default.hex}}"
+selected_fg = "{{colors.on_secondary_container.default.hex}}"
+selected_bg = "{{colors.secondary_container.default.hex}}"
 
-badge_fg = "{{colors.on_tertiary.default.hex}}"
-badge_bg = "{{colors.tertiary.default.hex}}"
+badge_fg = "{{colors.on_tertiary_container.default.hex}}"
+badge_bg = "{{colors.tertiary_container.default.hex}}"
 
 header_fg = "{{colors.on_primary.default.hex}}"
 header_bg = "{{colors.primary.default.hex}}"
@@ -153,11 +157,11 @@ header_bg = "{{colors.primary.default.hex}}"
 filter_fg = "{{colors.on_surface_variant.default.hex}}"
 filter_bg = "{{colors.surface_container_high.default.hex}}"
 
-filter_on_fg = "{{colors.on_primary.default.hex}}"
-filter_on_bg = "{{colors.primary.default.hex}}"
+filter_on_fg = "{{colors.on_secondary_container.default.hex}}"
+filter_on_bg = "{{colors.secondary_container.default.hex}}"
 
-filter_hot_fg = "{{colors.on_secondary.default.hex}}"
-filter_hot_bg = "{{colors.secondary.default.hex}}"
+filter_hot_fg = "{{colors.on_tertiary_container.default.hex}}"
+filter_hot_bg = "{{colors.tertiary_container.default.hex}}"
 
 [[sources]]
 name = "aur"
@@ -211,11 +215,11 @@ muted = "{{colors.on_surface_variant.default.hex}}"
 dim = "{{colors.outline.default.hex}}"
 focus = "{{colors.inverse_primary.default.hex}}"
 
-selected_fg = "{{colors.on_primary.default.hex}}"
-selected_bg = "{{colors.primary.default.hex}}"
+selected_fg = "{{colors.on_secondary_container.default.hex}}"
+selected_bg = "{{colors.secondary_container.default.hex}}"
 
-badge_fg = "{{colors.on_tertiary.default.hex}}"
-badge_bg = "{{colors.tertiary.default.hex}}"
+badge_fg = "{{colors.on_tertiary_container.default.hex}}"
+badge_bg = "{{colors.tertiary_container.default.hex}}"
 
 header_fg = "{{colors.on_primary.default.hex}}"
 header_bg = "{{colors.primary.default.hex}}"
@@ -223,11 +227,11 @@ header_bg = "{{colors.primary.default.hex}}"
 filter_fg = "{{colors.on_surface_variant.default.hex}}"
 filter_bg = "{{colors.surface_container_high.default.hex}}"
 
-filter_on_fg = "{{colors.on_primary.default.hex}}"
-filter_on_bg = "{{colors.primary.default.hex}}"
+filter_on_fg = "{{colors.on_secondary_container.default.hex}}"
+filter_on_bg = "{{colors.secondary_container.default.hex}}"
 
-filter_hot_fg = "{{colors.on_secondary.default.hex}}"
-filter_hot_bg = "{{colors.secondary.default.hex}}"
+filter_hot_fg = "{{colors.on_tertiary_container.default.hex}}"
+filter_hot_bg = "{{colors.tertiary_container.default.hex}}"
 ```
 
 ## Development

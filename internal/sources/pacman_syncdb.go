@@ -19,6 +19,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 
 	"github.com/kristyancarvalho/aurview/internal/aur"
+	"github.com/kristyancarvalho/aurview/internal/filter"
 )
 
 type PacmanSyncDBSource struct {
@@ -48,18 +49,19 @@ func (s *PacmanSyncDBSource) Type() string {
 }
 
 func (s *PacmanSyncDBSource) Search(_ context.Context, query string) ([]aur.Package, error) {
-	query = strings.TrimSpace(query)
-	if query == "" {
+	parsed := filter.ParseQuery(query)
+	searchText := strings.TrimSpace(parsed.Text)
+	if searchText == "" && !parsed.HasDeveloper() {
 		return nil, aur.ErrEmptyQuery
 	}
 	pkgs, err := s.loadPackages()
 	if err != nil {
 		return nil, err
 	}
-	terms := strings.Fields(strings.ToLower(query))
+	terms := strings.Fields(strings.ToLower(searchText))
 	out := make([]aur.Package, 0, len(pkgs))
 	for _, pkg := range pkgs {
-		if syncDBPackageMatches(pkg, terms) {
+		if syncDBPackageMatches(pkg, terms) && parsed.MatchDeveloper(pkg) {
 			out = append(out, pkg.Clone())
 		}
 	}

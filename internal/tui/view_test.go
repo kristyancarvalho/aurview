@@ -63,6 +63,54 @@ func TestSelectedRowIsPaddedBeforeStyling(t *testing.T) {
 	}
 }
 
+func TestRowsUseStableSourceBadgeLabels(t *testing.T) {
+	model := viewTestModel()
+	model.selected = -1
+	sources := []struct {
+		source string
+		want   string
+	}{
+		{source: "aur", want: "AUR"},
+		{source: "core", want: "CORE"},
+		{source: "extra", want: "EXT"},
+		{source: "multilib", want: "MULTI"},
+		{source: "chaotic-aur", want: "CHAOTIC"},
+		{source: "custom-repo", want: "CR"},
+	}
+	model.results = nil
+	for i, tt := range sources {
+		model.results = append(model.results, ranking.RankedPackage{
+			Package: aur.Package{Source: tt.source, Name: tt.source + "-pkg", Version: "1", LastModified: int64(1_700_000_000 + i)},
+			Score:   10,
+		})
+	}
+	layout := newListLayout(100)
+
+	for i, tt := range sources {
+		row := components.StripANSI(model.renderRow(i, layout))
+		if !strings.Contains(row, tt.want) {
+			t.Fatalf("row for %q = %q, want badge label %q", tt.source, row, tt.want)
+		}
+	}
+}
+
+func TestSourceBadgeStyleIsScopedToLabel(t *testing.T) {
+	model := viewTestModel()
+	model.selected = -1
+	model.theme = theme.Theme{Color: true, SourceChaoticCode: "35"}
+	model.results[0].Package.Source = "chaotic-aur"
+	layout := newListLayout(80)
+
+	row := model.renderRow(0, layout)
+
+	if !strings.Contains(row, "\x1b[35mCHAOTIC\x1b[0m ") {
+		t.Fatalf("source badge style was not scoped to label text: %q", row)
+	}
+	if strings.Contains(row, "\x1b[35mCHAOTIC ") {
+		t.Fatalf("source badge style leaked into padded column: %q", row)
+	}
+}
+
 func TestWideViewKeepsSelectedRowHighlight(t *testing.T) {
 	model := viewTestModel()
 	model.width = 120
@@ -110,6 +158,21 @@ func TestHeadersAndFiltersUseFilledStyles(t *testing.T) {
 	}
 	if !strings.HasPrefix(list, "\x1b[37;44m") {
 		t.Fatalf("list header does not use table style: %q", list)
+	}
+}
+
+func TestFilterBarShowsDeveloperQueryChip(t *testing.T) {
+	model := viewTestModel()
+	model.width = 120
+	model.input = "paru dev:alice"
+
+	filterBar := components.StripANSI(model.renderFilterBar())
+
+	if !strings.Contains(filterBar, "maint-state:any") {
+		t.Fatalf("filter bar missing maintainer state label: %q", filterBar)
+	}
+	if !strings.Contains(filterBar, "dev:alice") {
+		t.Fatalf("filter bar missing developer query chip: %q", filterBar)
 	}
 }
 

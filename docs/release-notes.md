@@ -1,5 +1,44 @@
 # Release Notes
 
+## v0.5.2 - 2026-06-17
+
+### Summary
+
+Patch release improving TUI scanability with better theme color distribution, distinct repository source badges and developer/maintainer query filters.
+
+### Added
+
+- Query filters for package developers and maintainers:
+  - `dev:<name>`
+  - `developer:<name>`
+  - `maint:<name>`
+  - `maintainer:<name>`
+- AUR maintainer search through the AUR RPC maintainer search mode
+- Local pacman repository packager search using `%PACKAGER%` metadata from sync databases
+- Repository source badges with stable labels for `AUR`, `CORE`, `EXT`, `MULTI`, `CHAOTIC` and custom repositories
+
+### Changed
+
+- Matugen theme mapping now keeps primary colors focused on app/header identity while using secondary, tertiary and surface roles for selected rows, filters and badges
+- Built-in themes now use more distinct filled styles for headers, selected rows, badges and filter states
+- Source badge styles are repository-specific and keep selected-row contrast readable
+- The maintained/orphaned filter chip is now labeled `maint-state` to avoid confusion with `maint:<name>` query filters
+
+### Known Limitations
+
+- AUR maintainer-only queries depend on the read-only AUR RPC maintainer search endpoint.
+- aurview still does not install, remove, upgrade, clone, build or mutate packages.
+
+### Validation Notes
+
+- `gofmt -w .`
+- `go test ./...`
+- `go vet ./...`
+- `go build ./cmd/aurview`
+- Search validation for normal package names and `dev:`, `developer:`, `maint:` and `maintainer:` query aliases
+- Badge validation for `AUR`, `core`, `extra`, `multilib`, `chaotic-aur` and custom repositories
+- Matugen and built-in theme visual validation
+
 ## v0.5.0 - 2026-06-17
 
 ### Summary
