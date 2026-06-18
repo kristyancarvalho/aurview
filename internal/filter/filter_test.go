@@ -54,6 +54,37 @@ func TestSourcesNormalizesAndSorts(t *testing.T) {
 	}
 }
 
+func TestSourceBadgeLabelKnownRepositories(t *testing.T) {
+	tests := map[string]string{
+		"":            "AUR",
+		"aur":         "AUR",
+		"AUR":         "AUR",
+		"core":        "CORE",
+		"extra":       "EXT",
+		"multilib":    "MULTI",
+		"chaotic-aur": "CHAOTIC",
+	}
+	for source, want := range tests {
+		if got := SourceBadgeLabel(source); got != want {
+			t.Fatalf("SourceBadgeLabel(%q) = %q, want %q", source, got, want)
+		}
+	}
+}
+
+func TestSourceBadgeLabelFallbacks(t *testing.T) {
+	tests := map[string]string{
+		"custom":         "CUSTOM",
+		"local-testing":  "LT",
+		"archlinuxcn":    "ARCHLINU",
+		"repo.with.dots": "RWD",
+	}
+	for source, want := range tests {
+		if got := SourceBadgeLabel(source); got != want {
+			t.Fatalf("SourceBadgeLabel(%q) = %q, want %q", source, got, want)
+		}
+	}
+}
+
 func TestActiveCount(t *testing.T) {
 	state := State{Source: "aur", MinVotes: 10, Match: MatchExact}
 	if got := state.ActiveCount(); got != 3 {

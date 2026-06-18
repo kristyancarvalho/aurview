@@ -137,6 +137,68 @@ func TestBuiltInThemesDistributeFilledStyles(t *testing.T) {
 	}
 }
 
+func TestSourceBadgeStylesDifferByRepository(t *testing.T) {
+	for _, name := range []string{"arch", "dark", "light", "high-contrast"} {
+		t.Run(name, func(t *testing.T) {
+			tm, ok := Named(name)
+			if !ok {
+				t.Fatalf("Named(%q) missing", name)
+			}
+			sources := []string{"aur", "core", "extra", "multilib", "chaotic-aur", "custom"}
+			seen := map[string]string{}
+			for _, source := range sources {
+				code := tm.sourceBadgeCode(source)
+				if code == "" {
+					t.Fatalf("%s source %q badge code is empty", name, source)
+				}
+				if previous, ok := seen[code]; ok {
+					t.Fatalf("%s reuses badge code %q for %s and %s", name, code, previous, source)
+				}
+				seen[code] = source
+			}
+		})
+	}
+}
+
+func TestMatugenSourceBadgeStylesUseConfiguredRoles(t *testing.T) {
+	tm := Matugen(ColorConfig{
+		Accent:      "#112233",
+		Good:        "#445566",
+		Warn:        "#778899",
+		Muted:       "#010203",
+		Focus:       "#070809",
+		BadgeFG:     "#101112",
+		BadgeBG:     "#131415",
+		HeaderFG:    "#161718",
+		HeaderBG:    "#191a1b",
+		FilterFG:    "#202122",
+		FilterBG:    "#232425",
+		FilterOnFG:  "#262728",
+		FilterOnBG:  "#292a2b",
+		FilterHotFG: "#303132",
+		FilterHotBG: "#333435",
+	})
+
+	if got := tm.SourceBadgeFor("aur", "AUR"); got != tm.SourceBadge("AUR") {
+		t.Fatalf("AUR badge = %q, want configured badge role %q", got, tm.SourceBadge("AUR"))
+	}
+	if got := tm.SourceBadgeFor("core", "CORE"); got != tm.Good("CORE") {
+		t.Fatalf("core badge = %q, want good role %q", got, tm.Good("CORE"))
+	}
+	if got := tm.SourceBadgeFor("extra", "EXT"); got != tm.Accent("EXT") {
+		t.Fatalf("extra badge = %q, want accent role %q", got, tm.Accent("EXT"))
+	}
+	if got := tm.SourceBadgeFor("multilib", "MULTI"); got != tm.Warn("MULTI") {
+		t.Fatalf("multilib badge = %q, want warn role %q", got, tm.Warn("MULTI"))
+	}
+	if got := tm.SourceBadgeFor("chaotic-aur", "CHAOTIC"); got != tm.Focus("CHAOTIC") {
+		t.Fatalf("chaotic badge = %q, want focus role %q", got, tm.Focus("CHAOTIC"))
+	}
+	if got := tm.SourceBadgeFor("custom", "CUSTOM"); got != tm.Muted("CUSTOM") {
+		t.Fatalf("custom badge = %q, want muted role %q", got, tm.Muted("CUSTOM"))
+	}
+}
+
 func TestDetectWithColorsKeepsBuiltInThemesCompatible(t *testing.T) {
 	got, err := DetectWithColors("arch", ColorConfig{Accent: "#000000"})
 	if err != nil {
@@ -161,5 +223,8 @@ func TestMonoThemeDoesNotEmitANSI(t *testing.T) {
 	}
 	if got := tm.Accent("AUR"); got != "AUR" {
 		t.Fatalf("Accent() = %q, want plain text", got)
+	}
+	if got := tm.SourceBadgeFor("core", "CORE"); got != "CORE" {
+		t.Fatalf("SourceBadgeFor() = %q, want plain text", got)
 	}
 }

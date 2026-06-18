@@ -162,6 +162,67 @@ func SourceLabel(source string) string {
 	return source
 }
 
+func SourceBadgeLabel(source string) string {
+	label := SourceLabel(source)
+	switch strings.ToLower(strings.TrimSpace(label)) {
+	case "aur":
+		return "AUR"
+	case "core":
+		return "CORE"
+	case "extra":
+		return "EXT"
+	case "multilib":
+		return "MULTI"
+	case "chaotic-aur":
+		return "CHAOTIC"
+	default:
+		return compactSourceBadgeLabel(label)
+	}
+}
+
+func compactSourceBadgeLabel(source string) string {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return "AUR"
+	}
+	label := strings.ToUpper(source)
+	const maxRunes = 8
+	if runeLen(label) <= maxRunes {
+		return label
+	}
+	parts := strings.FieldsFunc(label, func(r rune) bool {
+		return r == '-' || r == '_' || r == '/' || r == '.'
+	})
+	if len(parts) > 1 {
+		var b strings.Builder
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			b.WriteRune([]rune(part)[0])
+		}
+		if out := b.String(); out != "" && runeLen(out) <= maxRunes {
+			return out
+		}
+	}
+	return truncateRunes(label, maxRunes)
+}
+
+func runeLen(value string) int {
+	return len([]rune(value))
+}
+
+func truncateRunes(value string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= max {
+		return value
+	}
+	return string(runes[:max])
+}
+
 func sourceKey(pkg aur.Package) string {
 	source := strings.TrimSpace(pkg.Source)
 	if source == "" {
