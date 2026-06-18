@@ -126,6 +126,9 @@ func (m Model) renderFilterBar() string {
 			parts = append(parts, m.theme.FilterChip(text))
 		}
 	}
+	if parsed := filter.ParseQuery(m.input); parsed.HasDeveloper() {
+		parts = append(parts, m.theme.FilterActive(" dev:"+parsed.DeveloperLabel()+" "))
+	}
 	line := strings.Join(parts, " ")
 	return components.PadRight(components.Truncate(line, width), width)
 }

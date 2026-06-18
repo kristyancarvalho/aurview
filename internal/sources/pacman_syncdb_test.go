@@ -94,6 +94,45 @@ func TestPacmanSyncDBSourceMissingDatabaseReturnsNoResults(t *testing.T) {
 	}
 }
 
+func TestPacmanSyncDBSourceSearchesPackagerQueries(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "core.db")
+	writeSyncDB(t, dbPath, map[string]string{
+		"pacman-7.1.0-1/desc": `%NAME%
+pacman
+
+%VERSION%
+7.1.0-1
+
+%DESC%
+Arch package manager
+
+%PACKAGER%
+Arch Linux
+`,
+		"other-1.0.0-1/desc": `%NAME%
+other
+
+%VERSION%
+1.0.0-1
+
+%DESC%
+Other package
+
+%PACKAGER%
+Someone Else
+`,
+	})
+	source := NewPacmanSyncDBSource("core", "core", dbPath)
+
+	results, err := source.Search(context.Background(), "developer:arch")
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(results) != 1 || results[0].Name != "pacman" || results[0].MaintainerName() != "Arch Linux" {
+		t.Fatalf("Search() = %#v, want only Arch Linux packager match", results)
+	}
+}
+
 func TestMultiClientMixesAURAndLocalRepositories(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "core.db")
 	writeSyncDB(t, dbPath, map[string]string{

@@ -36,8 +36,22 @@ func (m *Model) applyFilters() {
 
 func (m *Model) setFilteredStatus(query string) {
 	active := m.filterState.ActiveCount()
+	parsed := filter.ParseQuery(query)
+	developer := parsed.DeveloperLabel()
 	if active == 0 {
+		if developer != "" {
+			if parsed.Text != "" {
+				m.status = fmt.Sprintf("%d packages ranked for %q with developer %q", len(m.results), parsed.Text, developer)
+				return
+			}
+			m.status = fmt.Sprintf("%d packages matched developer %q", len(m.results), developer)
+			return
+		}
 		m.status = fmt.Sprintf("%d packages ranked for %q", len(m.results), query)
+		return
+	}
+	if developer != "" {
+		m.status = fmt.Sprintf("%d of %d packages after %d filters with developer %q", len(m.results), len(m.allResults), active, developer)
 		return
 	}
 	m.status = fmt.Sprintf("%d of %d packages after %d filters", len(m.results), len(m.allResults), active)
@@ -157,7 +171,7 @@ func (m Model) sourceOptions() []string {
 func (m Model) filterChips() []filterChip {
 	chips := []filterChip{
 		{Label: "src:" + sourceFilterLabel(m.filterState.Source), Active: m.filterState.Source != ""},
-		{Label: "maint:" + maintainerFilterLabel(m.filterState.Maintainer), Active: m.filterState.Maintainer != filter.MaintainerAny},
+		{Label: "maint-state:" + maintainerFilterLabel(m.filterState.Maintainer), Active: m.filterState.Maintainer != filter.MaintainerAny},
 		{Label: "flag:" + flagFilterLabel(m.filterState.Flag), Active: m.filterState.Flag != filter.FlagAny},
 		{Label: votesFilterLabel(m.filterState.MinVotes), Active: m.filterState.MinVotes > 0},
 		{Label: popularityFilterLabel(m.filterState.MinPopularity), Active: m.filterState.MinPopularity > 0},

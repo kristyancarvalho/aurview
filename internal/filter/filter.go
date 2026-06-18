@@ -44,6 +44,88 @@ type State struct {
 	Match         MatchMode
 }
 
+type Query struct {
+	Text           string
+	DeveloperTerms []string
+}
+
+func ParseQuery(query string) Query {
+	fields := strings.Fields(query)
+	text := make([]string, 0, len(fields))
+	developers := []string{}
+	for _, field := range fields {
+		key, value, ok := strings.Cut(field, ":")
+		if !ok || !isDeveloperKey(key) {
+			text = append(text, field)
+			continue
+		}
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		developers = append(developers, value)
+	}
+	return Query{
+		Text:           strings.Join(text, " "),
+		DeveloperTerms: developers,
+	}
+}
+
+func (q Query) HasDeveloper() bool {
+	return len(q.DeveloperTerms) > 0
+}
+
+func (q Query) DeveloperLabel() string {
+	return strings.Join(q.DeveloperTerms, ",")
+}
+
+func (q Query) SourceSearchText() string {
+	if strings.TrimSpace(q.Text) != "" {
+		return q.Text
+	}
+	if len(q.DeveloperTerms) > 0 {
+		return q.DeveloperTerms[0]
+	}
+	return ""
+}
+
+func (q Query) MatchDeveloper(pkg aur.Package) bool {
+	if len(q.DeveloperTerms) == 0 {
+		return true
+	}
+	developer := packageDeveloper(pkg)
+	if developer == "" {
+		return false
+	}
+	developer = strings.ToLower(developer)
+	for _, term := range q.DeveloperTerms {
+		term = strings.ToLower(strings.TrimSpace(term))
+		if term == "" {
+			continue
+		}
+		if !strings.Contains(developer, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDeveloperKey(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case "dev", "developer", "maint", "maintainer":
+		return true
+	default:
+		return false
+	}
+}
+
+func packageDeveloper(pkg aur.Package) string {
+	if pkg.Maintainer == nil {
+		return ""
+	}
+	return strings.TrimSpace(*pkg.Maintainer)
+}
+
 func (s State) Apply(query string, results []ranking.RankedPackage, now time.Time) []ranking.RankedPackage {
 	if now.IsZero() {
 		now = time.Now()
@@ -61,6 +143,10 @@ func (s State) Apply(query string, results []ranking.RankedPackage, now time.Tim
 }
 
 func (s State) MatchPackage(query string, pkg aur.Package, now time.Time) bool {
+	parsed := ParseQuery(query)
+	if !parsed.MatchDeveloper(pkg) {
+		return false
+	}
 	if s.Source != "" && !strings.EqualFold(sourceKey(pkg), s.Source) {
 		return false
 	}
@@ -99,7 +185,7 @@ func (s State) MatchPackage(query string, pkg aur.Package, now time.Time) bool {
 			return false
 		}
 	}
-	return matchName(query, pkg, s.Match)
+	return matchName(parsed.Text, pkg, s.Match)
 }
 
 func (s State) Active() bool {

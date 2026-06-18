@@ -150,7 +150,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.history.Add(msg.query)
-		m.allResults = m.scorer.Rank(msg.query, msg.packages)
+		parsedQuery := filter.ParseQuery(msg.query)
+		m.allResults = m.scorer.Rank(parsedQuery.Text, msg.packages)
 		m.selected = 0
 		m.scroll = 0
 		m.detailScroll = 0

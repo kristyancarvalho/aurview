@@ -69,11 +69,15 @@ This installs the binary into `$GOBIN`, or `$GOPATH/bin` when `GOBIN` is not set
 aurview
 aurview paru
 aurview "wayland screenshot"
+aurview "dev:alice"
+aurview "maintainer:arch"
 aurview --version
 ```
 
 Type a package name or keyword, select a result, then press `Enter` to copy the package name.
 Use the compact filter bar to narrow results without running a new search.
+Developer query filters can be combined with package terms using `dev:<name>`,
+`developer:<name>`, `maint:<name>` or `maintainer:<name>`.
 
 ## Keybindings
 

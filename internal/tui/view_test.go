@@ -161,6 +161,21 @@ func TestHeadersAndFiltersUseFilledStyles(t *testing.T) {
 	}
 }
 
+func TestFilterBarShowsDeveloperQueryChip(t *testing.T) {
+	model := viewTestModel()
+	model.width = 120
+	model.input = "paru dev:alice"
+
+	filterBar := components.StripANSI(model.renderFilterBar())
+
+	if !strings.Contains(filterBar, "maint-state:any") {
+		t.Fatalf("filter bar missing maintainer state label: %q", filterBar)
+	}
+	if !strings.Contains(filterBar, "dev:alice") {
+		t.Fatalf("filter bar missing developer query chip: %q", filterBar)
+	}
+}
+
 func TestDetailLinesUseSectionsAndDashEmptyValues(t *testing.T) {
 	model := viewTestModel()
 	pkg := model.results[0].Package

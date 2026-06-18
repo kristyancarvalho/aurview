@@ -48,3 +48,14 @@ func TestCycleSelectedFilterUpdatesResults(t *testing.T) {
 		t.Fatalf("filtered results = %#v, want only pkg-a", model.results)
 	}
 }
+
+func TestDeveloperQueryStatus(t *testing.T) {
+	model := New(Options{})
+	model.results = []ranking.RankedPackage{{Package: aur.Package{Name: "pkg"}}}
+
+	model.setFilteredStatus("dev:alice")
+
+	if got, want := model.status, `1 packages matched developer "alice"`; got != want {
+		t.Fatalf("status = %q, want %q", got, want)
+	}
+}

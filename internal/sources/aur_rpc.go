@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/kristyancarvalho/aurview/internal/aur"
+	"github.com/kristyancarvalho/aurview/internal/filter"
 )
 
 type AURRPCSource struct {
@@ -29,14 +30,24 @@ func (s *AURRPCSource) Type() string {
 }
 
 func (s *AURRPCSource) Search(ctx context.Context, query string) ([]aur.Package, error) {
-	pkgs, err := s.client.Search(ctx, query, aur.SearchByNameDesc)
+	parsed := filter.ParseQuery(query)
+	searchBy := aur.SearchByNameDesc
+	searchText := parsed.SourceSearchText()
+	if parsed.Text == "" && parsed.HasDeveloper() {
+		searchBy = aur.SearchByMaintainer
+	}
+	pkgs, err := s.client.Search(ctx, searchText, searchBy)
 	if err != nil {
 		return nil, err
 	}
+	out := make([]aur.Package, 0, len(pkgs))
 	for i := range pkgs {
 		s.stamp(&pkgs[i])
+		if parsed.MatchDeveloper(pkgs[i]) {
+			out = append(out, pkgs[i])
+		}
 	}
-	return pkgs, nil
+	return out, nil
 }
 
 func (s *AURRPCSource) Info(ctx context.Context, name string) (aur.Package, error) {

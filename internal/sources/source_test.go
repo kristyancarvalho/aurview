@@ -2,6 +2,8 @@ package sources
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -47,6 +49,31 @@ func TestMultiClientKeepsDuplicateNamesAcrossSources(t *testing.T) {
 	got := []string{pkgs[0].DisplaySource(), pkgs[1].DisplaySource()}
 	if want := []string{"AUR", "custom"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("sources = %#v, want %#v", got, want)
+	}
+}
+
+func TestAURRPCSourceSearchesMaintainerQueries(t *testing.T) {
+	alice := "Alice Developer"
+	bob := "Bob Developer"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if query.Get("by") != string(aur.SearchByMaintainer) || query.Get("arg") != "ali" {
+			t.Fatalf("unexpected AUR RPC query: %s", r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"version":5,"type":"search","resultcount":2,"results":[` +
+			`{"Name":"alice-tool","PackageBase":"alice-tool","Maintainer":"` + alice + `"},` +
+			`{"Name":"bob-tool","PackageBase":"bob-tool","Maintainer":"` + bob + `"}` +
+			`]}`))
+	}))
+	defer server.Close()
+
+	source := NewAURRPCSource("aur", server.URL)
+	results, err := source.Search(context.Background(), "dev:ali")
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(results) != 1 || results[0].Name != "alice-tool" || results[0].MaintainerName() != alice {
+		t.Fatalf("Search() = %#v, want only Alice maintainer match", results)
 	}
 }
 
