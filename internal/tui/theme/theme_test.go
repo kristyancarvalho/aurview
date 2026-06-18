@@ -50,6 +50,7 @@ func TestMatugenThemeParsesHexColors(t *testing.T) {
 		"selected":   tm.Selected("x"),
 		"badge":      tm.SourceBadge("x"),
 		"header":     tm.Header("x"),
+		"table":      tm.TableHeader("x"),
 		"filter":     tm.FilterChip("x"),
 		"filter-on":  tm.FilterActive("x"),
 		"filter-hot": tm.FilterFocused("x"),
@@ -64,6 +65,12 @@ func TestMatugenThemeParsesHexColors(t *testing.T) {
 	}
 	if got := tm.Selected("x"); got != "\x1b[38;2;255;255;255;48;2;0;0;0mx\x1b[0m" {
 		t.Fatalf("Selected() = %q, want fg/bg true-color ANSI", got)
+	}
+	if got := tm.TableHeader("x"); got != "\x1b[38;2;32;33;34;48;2;35;36;37mx\x1b[0m" {
+		t.Fatalf("TableHeader() = %q, want filter surface true-color ANSI", got)
+	}
+	if tm.HeaderCode == tm.TableCode {
+		t.Fatalf("Matugen table header reused app header color pair %q", tm.TableCode)
 	}
 }
 
@@ -93,8 +100,40 @@ func TestMatugenMissingColorsFallBack(t *testing.T) {
 	if got, want := tm.Header("x"), fallback.Header("x"); got != want {
 		t.Fatalf("missing header fallback = %q, want %q", got, want)
 	}
+	if got, want := tm.TableHeader("x"), fallback.TableHeader("x"); got != want {
+		t.Fatalf("missing table fallback = %q, want %q", got, want)
+	}
 	if got, want := tm.FilterActive("x"), fallback.FilterActive("x"); got != want {
 		t.Fatalf("missing active filter fallback = %q, want %q", got, want)
+	}
+}
+
+func TestBuiltInThemesDistributeFilledStyles(t *testing.T) {
+	for _, name := range []string{"arch", "dark", "light", "high-contrast"} {
+		t.Run(name, func(t *testing.T) {
+			tm, ok := Named(name)
+			if !ok {
+				t.Fatalf("Named(%q) missing", name)
+			}
+			codes := map[string]string{
+				"header":          tm.HeaderCode,
+				"selected":        tm.SelectedCode,
+				"badge":           tm.BadgeCode,
+				"inactive filter": tm.FilterCode,
+				"active filter":   tm.FilterOnCode,
+				"focused filter":  tm.FilterHotCode,
+			}
+			seen := map[string]string{}
+			for label, code := range codes {
+				if code == "" {
+					t.Fatalf("%s %s code is empty", name, label)
+				}
+				if previous, ok := seen[code]; ok {
+					t.Fatalf("%s reuses %q for %s and %s", name, code, previous, label)
+				}
+				seen[code] = label
+			}
+		})
 	}
 }
 
