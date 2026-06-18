@@ -7,6 +7,20 @@ for tagged releases.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-06-17
+
+### Added
+
+- Developer and maintainer query filters using `dev:`, `developer:`, `maint:` and `maintainer:`
+- Maintainer search for AUR packages and packager metadata search for local pacman repositories
+- Distinct short source badges for `AUR`, `CORE`, `EXT`, `MULTI`, `CHAOTIC` and custom repositories
+
+### Changed
+
+- Matugen and built-in theme mappings now distribute header, selected row, filter, badge and warning colors across more distinct roles
+- Matugen template examples now keep primary colors focused on header identity and use secondary/tertiary containers for selected rows, filters and badges
+- The maintained/orphaned filter chip is labeled `maint-state` to avoid ambiguity with `maint:<name>` developer search
+
 ## [0.5.0] - 2026-06-17
 
 ### Added
