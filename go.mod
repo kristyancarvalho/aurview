@@ -4,7 +4,8 @@ go 1.26.4
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/pelletier/go-toml/v2 v2.3.1
+	github.com/klauspost/compress v1.18.6
+	github.com/pelletier/go-toml/v2 v2.4.2
 )
 
 require (
@@ -15,7 +16,6 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
